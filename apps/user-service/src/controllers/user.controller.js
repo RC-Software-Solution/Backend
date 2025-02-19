@@ -1,5 +1,5 @@
 const User = require('../models/User');
-const { sendPushNotification } = require("../services/notificationService")
+const { sendPushNotification } = require('../services/notificationService');
 const { sendEmail } = require('../services/emailService');
 const { generateToken } = require('../utils/jwt');
 const { hashPassword, comparePassword } = require('../utils/password');
@@ -38,6 +38,7 @@ exports.signup = async (req, res) => {
       fcm_token,
       created_at: new Date(),
       updated_at: new Date(),
+      status: 'active',
     });
 
     res.status(201).json({
@@ -53,6 +54,7 @@ exports.signup = async (req, res) => {
         approved: newUser.approved,
         fcm_token: newUser.fcm_token,
         created_at: newUser.created_at,
+        status: newUser.status,
       },
     });
   } catch (error) {
@@ -67,6 +69,13 @@ exports.login = async (req, res) => {
 
     if (!user || !(await comparePassword(password, user.password))) {
       return res.status(404).json({ message: 'Invalid credentials' });
+    }
+
+    if (user.status === 'deleted') {
+      return res.status(403).json({
+        message:
+          'Your account has been deleted. Please re-register using your email',
+      });
     }
 
     if (!user.approved) {
@@ -149,6 +158,20 @@ exports.approveCustomer = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
     console.log(error);
-    
   }
 };
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByPk(userId);
+
+    if(!user){
+      return res.status(404).json({ error: "user not found"});
+    }
+    
+  } catch (error) {
+    
+  }
+}

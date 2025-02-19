@@ -1,7 +1,7 @@
 const admin = require("firebase-admin");
 
 if(!admin.apps.length){
-    const serviceAccount = require("../../../../rc-notification-52917-ef7aa38c6b18.json");
+    const serviceAccount = require("../../../../rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json");
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
     });

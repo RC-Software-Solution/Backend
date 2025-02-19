@@ -1,8 +1,42 @@
 version: '3.8'
 services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  db:
+    image: mysql:latest
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: rc
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 
+    ports:
+      - "3306:3306"
   user-service:
-    build: ./apps/user-service
+    build: ../apps/user-service
+    container_name: user-service
+    depends_on:
+      - rabbitmq
+      - db
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=
+      - DB_NAME=rc
+      - NODE_ENV=production
     ports:
       - "4001:4001"
-    environment:
-      - NODE_ENV=production
+    volumes:
+      - ../apps/user-service:/app
+      - /app/node_modules

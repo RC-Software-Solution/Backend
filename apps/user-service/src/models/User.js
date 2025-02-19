@@ -13,7 +13,9 @@ const User = sequelize.define("User", {
     created_at: { type: DataTypes.DATE}, //remeber sequelize itself create createdAt columns when doing this even you have created_at
     updated_at: { type: DataTypes.DATE},
     approved: { type: DataTypes.BOOLEAN, defaultValue: 0},
-    fcm_token: { type: DataTypes.STRING}
+    fcm_token: { type: DataTypes.STRING},
+    status: { type: DataTypes.ENUM("active", "inactive", "deleted"), defaultValue: "active"},
+    deleted_at: { type: DataTypes.DATE }
 }, {
     tableName: "users",
     timestamps: true,
