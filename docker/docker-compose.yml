@@ -18,10 +18,21 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: rc
-      MYSQL_USER: root
-      MYSQL_PASSWORD: 
     ports:
       - "3306:3306"
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8080:80"
   user-service:
     build: ../apps/user-service
     container_name: user-service
@@ -32,7 +43,7 @@ services:
       - RABBITMQ_URL=amqp://rabbitmq
       - DB_HOST=db
       - DB_USER=root
-      - DB_PASSWORD=
+      - DB_PASSWORD=root
       - DB_NAME=rc
       - NODE_ENV=production
     ports:
@@ -40,3 +51,4 @@ services:
     volumes:
       - ../apps/user-service:/app
       - /app/node_modules
+      - ../secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json:/app/secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json

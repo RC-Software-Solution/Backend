@@ -41,5 +41,5 @@ Thumbs.db
 .nx/cache
 .nx/workspace-data
 
-rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json
+secrets/*
 

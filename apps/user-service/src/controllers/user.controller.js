@@ -21,7 +21,7 @@ exports.signup = async (req, res) => {
 
     const hashedPassword = await hashPassword(password);
 
-    var isApproved = true;
+    let isApproved = true;
     if (role === 'customer') {
       isApproved = false;
     }
@@ -161,17 +161,17 @@ exports.approveCustomer = async (req, res) => {
   }
 };
 
-exports.deleteAccount = async (req, res) => {
-  try {
-    const { userId } = req.params;
+// exports.deleteAccount = async (req, res) => {
+//   try {
+//     const { userId } = req.params;
 
-    const user = await User.findByPk(userId);
+//     const user = await User.findByPk(userId);
 
-    if(!user){
-      return res.status(404).json({ error: "user not found"});
-    }
+//     if(!user){
+//       return res.status(404).json({ error: "user not found"});
+//     }
     
-  } catch (error) {
+//   } catch (error) {
     
-  }
-}
+//   }
+// }
