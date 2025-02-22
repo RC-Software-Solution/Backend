@@ -20,6 +20,8 @@ services:
       MYSQL_DATABASE: rc
     ports:
       - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
@@ -36,6 +38,7 @@ services:
   user-service:
     build: ../apps/user-service
     container_name: user-service
+    command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
     depends_on:
       - rabbitmq
       - db
@@ -45,10 +48,14 @@ services:
       - DB_USER=root
       - DB_PASSWORD=root
       - DB_NAME=rc
-      - NODE_ENV=production
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
     ports:
       - "4001:4001"
     volumes:
       - ../apps/user-service:/app
       - /app/node_modules
       - ../secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json:/app/secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json
+
+volumes:
+  mysql-data:

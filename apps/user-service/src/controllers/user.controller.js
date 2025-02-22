@@ -16,7 +16,22 @@ exports.signup = async (req, res) => {
 
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ error: 'Email already registered' });
+      if(existingUser.status !== 'deleted'){
+        return res.status(400).json({ error: 'Email already registered' }); 
+      }
+      existingUser.status = 'active';
+      existingUser.deleted_at = null;
+      existingUser.full_name = full_name;
+      existingUser.password = await hashPassword(password);
+      existingUser.role = role;
+      existingUser.address = role === 'customer' ? address : null;
+      existingUser.phone = phone;
+      existingUser.fcm_token = fcm_token;
+      await existingUser.save();
+
+      return res.status(201).json({
+        message: 'User registered successfully. Please log in', user: existingUser
+      });
     }
 
     const hashedPassword = await hashPassword(password);
@@ -161,17 +176,29 @@ exports.approveCustomer = async (req, res) => {
   }
 };
 
-// exports.deleteAccount = async (req, res) => {
-//   try {
-//     const { userId } = req.params;
+exports.deleteAccount = async (req, res) => {
+  try {
+    const { userId } = req.params;
 
-//     const user = await User.findByPk(userId);
+    const user = await User.findByPk(userId);
 
-//     if(!user){
-//       return res.status(404).json({ error: "user not found"});
-//     }
+    if(!user){
+      return res.status(404).json({ error: "user not found"});
+    }
+
+    if( user.unpaid_orders_count > 2){
+      return res.status(400).json({
+        error: "You have unpaid orders. Please clear your orders before deleting your account"
+      });
+    }
+
+    user.status = 'deleted';
+    user.deleted_at = new Date();
+    await user.save();
+
+    res.json({ message: 'Account deleted successfully' });
     
-//   } catch (error) {
-    
-//   }
-// }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+}
