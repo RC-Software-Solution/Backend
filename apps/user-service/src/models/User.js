@@ -8,7 +8,7 @@ const User = sequelize.define("User", {
     password: { type: DataTypes.STRING, allowNull: false},
     role: { type: DataTypes.ENUM("customer", "delivery_person", "admin", "super_admin")},
     address: { type: DataTypes.STRING},
-    area_id: { type: DataTypes.BIGINT},
+    area_id: { type: DataTypes.BIGINT, references: { model: "areas", key: "area_id"}}, //here I tell sequelize to create a foreign key reference to the areas table
     phone: { type: DataTypes.STRING},
     created_at: { type: DataTypes.DATE}, //remeber sequelize itself create createdAt columns when doing this even you have created_at
     updated_at: { type: DataTypes.DATE},
