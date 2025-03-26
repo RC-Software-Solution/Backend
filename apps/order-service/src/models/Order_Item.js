@@ -20,7 +20,7 @@ const Order_Item = sequelize.define("Order_Item", {
 
 Order_Item.beforeCreate((order_item) => {
     const uniquePart = Date.now().toString().slice(-6);
-    order_item.id = `ORD_ITEM-${uniquePart}`;
+    order_item.id = `ORDER_ITEM-${uniquePart}`;
 })
 
 module.exports = Order_Item;

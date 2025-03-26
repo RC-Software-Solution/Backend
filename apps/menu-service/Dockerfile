@@ -13,8 +13,8 @@ RUN npm ci --only=production
 # Copy the rest of the application code
 COPY . .
 
-# Make port 4002 available to the world outside this container
-EXPOSE 4002
+# Make port 4001 available to the world outside this container
+EXPOSE 4003
 
 # Define the command to run your app using node
 CMD ["nodemon", "index.js"]
