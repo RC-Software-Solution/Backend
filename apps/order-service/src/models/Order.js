@@ -4,7 +4,7 @@ const sequelize = require("../config/database");
 
 const Order = sequelize.define("Order", {
     id: { type: DataTypes.STRING, primaryKey: true, allowNull: false },
-    customer_id: { type: DataTypes.STRING, allowNull, references: { model: "users", key: "id"}},
+    customer_id: { type: DataTypes.STRING, allowNull: false, references: { model: "users", key: "id"}},
     status: { type: DataTypes.ENUM("pending", "preparing", "delivering", "completed", "cancelled"), defaultValue: "pending", allowNull: false},
     total_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false},
     payment_status: { type: DataTypes.ENUM("pending", "paid", "failed"), defaultValue: "pending", allowNull: false},

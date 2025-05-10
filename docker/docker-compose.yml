@@ -40,7 +40,6 @@ services:
     container_name: user-service
     command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
     depends_on:
-      - rabbitmq
       - db
     environment:
       - RABBITMQ_URL=amqp://rabbitmq
@@ -56,6 +55,27 @@ services:
       - ../apps/user-service:/app
       - /app/node_modules
       - ../secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json:/app/secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json
+
+    
+  order-service:
+    build: ../apps/order-service
+    container_name: order-service
+    command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=rc
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "4002:4002"
+    volumes:
+      - ../apps/order-service:/app
+      - /app/node_modules
+      
 
 volumes:
   mysql-data:
