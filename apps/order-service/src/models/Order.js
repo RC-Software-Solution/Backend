@@ -8,14 +8,14 @@ const Order = sequelize.define("Order", {
     status: { type: DataTypes.ENUM("pending", "preparing", "delivering", "completed", "cancelled"), defaultValue: "pending", allowNull: false},
     total_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false},
     payment_status: { type: DataTypes.ENUM("pending", "paid", "failed"), defaultValue: "pending", allowNull: false},
-    created_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    },
-    updated_at: {
-        type: DataTypes.DATE,
-        defaultValue: DataTypes.NOW
-    }
+    // created_at: {
+    //     type: DataTypes.DATE,
+    //     defaultValue: DataTypes.NOW
+    // },
+    // updated_at: {
+    //     type: DataTypes.DATE,
+    //     defaultValue: DataTypes.NOW
+    // }
 }, {
     tableName: "orders",
     timestamps: true,
@@ -23,11 +23,9 @@ const Order = sequelize.define("Order", {
 });
 
 //hook to generate uuid for the id column
-Order.beforeCreate((order) => {
+Order.beforeValidate((order) => {
     const uniquePart = Date.now().toString().slice(-6);
     order.id = `ORD-${uniquePart}`;
 });
-
-
 
 module.exports = Order;

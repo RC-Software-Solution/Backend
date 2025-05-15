@@ -22,4 +22,4 @@ const User = sequelize.define("User", {
     underscored: true //here I tell sequelize to use snake_case for column names
 })
 
-module.exports = User;  
+module.exports = User;

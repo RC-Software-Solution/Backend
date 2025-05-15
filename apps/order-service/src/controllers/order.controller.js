@@ -24,6 +24,7 @@ exports.createOrder = async (req, res) => {
         date: sequelize.literal('CURDATE()'),
       },
     });
+
     if (!mealSession) {
       return res.status(400).json({ message: 'Meal session not found' });
     }
@@ -36,6 +37,7 @@ exports.createOrder = async (req, res) => {
       customer_id,
       total_price,
     });
+
     const orderItems = items.map((item) => ({
       order_id: order.id,
       id: item.id,
