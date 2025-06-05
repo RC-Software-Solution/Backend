@@ -11,6 +11,31 @@ services:
   #     RABBITMQ_DEFAULT_USER: guest
   #     RABBITMQ_DEFAULT_PASS: guest
 
+  redis:
+    image: redis:alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: ["redis-server", "--requirepass", ""]
+
+  websocket-service:
+    build: ../apps/websocket-service
+    container_name: websocket-service
+    command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+    ports:
+      - "4008:4008"
+    volumes:
+      - ../apps/websocket-service:/app
+      - /app/node_modules
+
   db:
     image: mysql:latest
     container_name: mysql_db
@@ -76,6 +101,8 @@ services:
       - ../apps/order-service:/app
       - /app/node_modules
       
+  
 
 volumes:
   mysql-data:
+  redis-data:

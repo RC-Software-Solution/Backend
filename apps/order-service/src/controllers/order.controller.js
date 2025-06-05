@@ -2,6 +2,7 @@ const Order = require('../models/Order');
 const Order_Item = require('../models/Order_Item');
 const Meal_Session = require('../models/Meal_Session');
 const sequelize = require('../config/database');
+const redisPublisher = require('../services/redisPublisher');
 
 exports.createOrder = async (req, res) => {
   const { customer_id, items, total_price, meal_time } = req.body;
@@ -61,6 +62,22 @@ exports.createOrder = async (req, res) => {
         },
       });
     }
+
+    const updatedSession = await Meal_Session.findOne({
+      where: {
+        meal_time,
+        date: sequelize.literal('CURDATE()'),
+      }
+    })
+    const remainingOrders = updatedSession.order_limit - updatedSession.current_orders;
+    console.log('Meal time:', meal_time);
+    console.log('Remaining orders:', remainingOrders);
+  
+
+    await redisPublisher.publishOrderUpdate({
+      meal_time,
+      remainingOrders
+    });
 
     return res
       .status(201)
