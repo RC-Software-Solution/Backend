@@ -1,8 +1,10 @@
-const Order = require('../models/Order');
-const Order_Item = require('../models/Order_Item');
-const Meal_Session = require('../models/Meal_Session');
-const sequelize = require('../config/database');
+// const Order = require('../models/Order.model');
+// const Order_Item = require('../models/Order_Item.model');
+// const Meal_Session = require('../models/Meal_Session.model');
+// const sequelize = require('../config/database');
 const redisPublisher = require('../services/redisPublisher');
+
+const { Order, Order_Item, Meal_Session, sequelize } = require('../models');
 
 exports.createOrder = async (req, res) => {
   const { customer_id, items, total_price, meal_time } = req.body;
@@ -91,7 +93,8 @@ exports.createOrder = async (req, res) => {
 };
 
 exports.editOrder = async (req, res) => {
-  const { order_id, items, total_price, meal_time } = req.body;
+  const { items, total_price, meal_time } = req.body;
+  const { order_id } = req.params;
 
   try {
     //get the existing order
@@ -200,6 +203,10 @@ exports.deleteOrder = async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    if (!order.order_items || order.order_items.length === 0) {
+      return res.status(400).json({ message: 'Order has no items to delete' });
+    }
+
     const mealTime = order.order_items[0]?.meal_time;
     if (!mealTime) {
       return res.status(400).json({ message: 'Meal time not found in order' });
@@ -235,8 +242,9 @@ exports.deleteOrder = async (req, res) => {
     );
 
     // Delete order and items
-    await Order_Item.destroy({ where: { order_id: orderId } });
-    await Order.destroy({ where: { id: orderId } });
+    // await Order_Item.destroy({ where: { order_id: order_id } });
+    // await Order.destroy({ where: { id: order_id } });
+    await order.destroy();
 
     // Decrement current_orders
     await mealSession.decrement('current_orders', { by: totalQty });
