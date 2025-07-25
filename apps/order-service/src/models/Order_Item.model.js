@@ -3,9 +3,9 @@ module.exports = (sequelize, DataTypes) => {
     'Order_Item',
     {
       id: {
-        type: DataTypes.UUID,
-        defaultValue: DataTypes.UUIDV4,
+        type: DataTypes.STRING,
         primaryKey: true,
+        allowNull: false,
       },
       order_id: {
         type: DataTypes.STRING,
@@ -35,13 +35,15 @@ module.exports = (sequelize, DataTypes) => {
   Order_Item.associate = (models) => {
     Order_Item.belongsTo(models.Order, {
       foreignKey: 'order_id',
-      onDelete: 'CASCADE',  
+      as: 'order',
+      onDelete: 'CASCADE',
     });
   };
 
   Order_Item.beforeValidate((order_item) => {
-    const uniquePart = Date.now().toString().slice(-6);
-    order_item.id = `ORDITM-${uniquePart}`;
+    const uniquePart = Date.now().toString();
+    const rand = Math.random().toString(36).slice(2, 8);
+    order_item.id = `ORDITM-${uniquePart}-${rand}`;
   });
 
   return Order_Item;

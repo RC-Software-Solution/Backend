@@ -38,14 +38,15 @@ module.exports = (sequelize, DataTypes) => {
       foreignKey: 'order_id',
       as: 'order_items',
       onDelete: 'CASCADE',
-      hooks: true
+      hooks: true,
     });
   };
 
   //hook to generate uuid for the id column
   Order.beforeValidate((order) => {
-    const uniquePart = Date.now().toString().slice(-6);
-    order.id = `ORD-${uniquePart}`;
+    const uniquePart = Date.now().toString();
+    const rand = Math.random().toString(36).slice(2, 8);
+    order.id = `ORD-${uniquePart}-${rand}`;
   });
 
   return Order;
