@@ -15,10 +15,6 @@ module.exports = (sequelize, DataTypes) => {
       quantity: { type: DataTypes.INTEGER, allowNull: false },
       food_name: { type: DataTypes.STRING, allowNull: false },
       food_description: { type: DataTypes.STRING, allowNull: false },
-      meal_time: {
-        type: DataTypes.ENUM('breakfast', 'lunch', 'dinner'),
-        allowNull: false,
-      },
       meal_type: {
         type: DataTypes.ENUM('veg', 'non-veg', 'other'),
         allowNull: false,

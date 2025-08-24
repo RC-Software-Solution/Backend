@@ -19,6 +19,10 @@ module.exports = (sequelize, DataTypes) => {
         defaultValue: 'pending',
         allowNull: false,
       },
+      meal_time: {
+        type: DataTypes.ENUM('breakfast', 'lunch', 'dinner'),
+        allowNull: false,
+      },
       total_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
       payment_status: {
         type: DataTypes.ENUM('pending', 'paid', 'failed'),
