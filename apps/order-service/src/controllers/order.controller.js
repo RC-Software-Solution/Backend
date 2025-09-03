@@ -1,7 +1,13 @@
 const redisPublisher = require('../services/redisPublisher');
 const { Op } = require('sequelize');
 
-const { Order, Order_Item, Meal_Session, sequelize, User } = require('../models');
+const {
+  Order,
+  Order_Item,
+  Meal_Session,
+  sequelize,
+  User,
+} = require('../models');
 
 exports.createOrder = async (req, res) => {
   const { customer_id, items, total_price, meal_time } = req.body;
@@ -95,7 +101,8 @@ exports.createOrder = async (req, res) => {
         date: sequelize.literal('CURDATE()'),
       },
     });
-    const remainingOrders = updatedSession.order_limit - updatedSession.current_orders;
+    const remainingOrders =
+      updatedSession.order_limit - updatedSession.current_orders;
     console.log('Meal time:', meal_time);
     console.log('Remaining orders:', remainingOrders);
 
@@ -118,8 +125,16 @@ exports.editOrder = async (req, res) => {
   const { order_id } = req.params;
 
   try {
-    if (!items || !Array.isArray(items) || items.length === 0 || !total_price || !order_id) {
-      return res.status(400).json({ message: 'Missing or invalid required fields' });
+    if (
+      !items ||
+      !Array.isArray(items) ||
+      items.length === 0 ||
+      !total_price ||
+      !order_id
+    ) {
+      return res
+        .status(400)
+        .json({ message: 'Missing or invalid required fields' });
     }
     //get the existing order
     const order = await Order.findByPk(order_id);
@@ -274,11 +289,12 @@ exports.deleteOrder = async (req, res) => {
 
     // Delete order and items in a transaction
     await sequelize.transaction(async (t) => {
-        await order.destroy({ transaction: t });
-        await mealSession.decrement('current_orders', {
-          by: totalQty, transaction: t,
-        });
-    })
+      await order.destroy({ transaction: t });
+      await mealSession.decrement('current_orders', {
+        by: totalQty,
+        transaction: t,
+      });
+    });
 
     const updatedSession = await Meal_Session.findByPk(mealSession.id);
     await redisPublisher.publishOrderUpdate({
@@ -319,19 +335,28 @@ exports.getOrders = async (req, res) => {
     }
     if (type === 'current' && !meal_time) {
       console.log('Validation failed: meal_time is required for type=current');
-      return res.status(400).json({ message: 'meal_time is required for type=current' });
+      return res
+        .status(400)
+        .json({ message: 'meal_time is required for type=current' });
     }
     if (!customer_id) {
       console.log('Validation failed: customer_id is missing');
-      return res.status(401).json({ message: 'Unauthorized: User not authenticated' });
+      return res
+        .status(401)
+        .json({ message: 'Unauthorized: User not authenticated' });
     }
 
     // Normalize meal_time to lowercase and validate against ENUM
     const validMealTimes = ['breakfast', 'lunch', 'dinner'];
     const normalizedMealTime = meal_time ? meal_time.toLowerCase() : null;
     if (type === 'current' && !validMealTimes.includes(normalizedMealTime)) {
-      console.log('Validation failed: Invalid meal_time', { meal_time, normalizedMealTime });
-      return res.status(400).json({ message: 'Invalid meal_time, must be one of: breakfast, lunch, dinner' });
+      console.log('Validation failed: Invalid meal_time', {
+        meal_time,
+        normalizedMealTime,
+      });
+      return res.status(400).json({
+        message: 'Invalid meal_time, must be one of: breakfast, lunch, dinner',
+      });
     }
     console.log('Normalized meal_time:', normalizedMealTime);
 
@@ -348,26 +373,43 @@ exports.getOrders = async (req, res) => {
     // Handle filter types
     if (type === 'current') {
       // Validate meal session existence
-      const targetDate = date || sequelize.literal('CURDATE()');
-      console.log('Querying Meal_Session with:', { meal_time: normalizedMealTime, targetDate });
+      const targetDate = date || new Date().toISOString().split('T')[0]; // Use current date in YYYY-MM-DD format
+      console.log('Querying Meal_Session with:', {
+        meal_time: normalizedMealTime,
+        targetDate,
+      });
       const mealSession = await Meal_Session.findOne({
         where: {
           meal_time: normalizedMealTime,
           date: targetDate,
         },
       });
-      console.log('Meal_Session result:', mealSession ? mealSession.toJSON() : null);
+      console.log(
+        'Meal_Session result:',
+        mealSession ? mealSession.toJSON() : null
+      );
 
       if (!mealSession) {
-        console.log('No Meal_Session found for:', { meal_time: normalizedMealTime, targetDate });
+        console.log('No Meal_Session found for:', {
+          meal_time: normalizedMealTime,
+          targetDate,
+        });
         return res.status(404).json({ message: 'Meal session not found' });
       }
 
       where.meal_time = normalizedMealTime;
+      // Fix the date filtering to properly compare dates using Sequelize date functions
       where.created_at = {
-        [Op.gte]: sequelize.literal(`DATE_FORMAT('${date || 'CURDATE()'}', '%Y-%m-%d 00:00:00')`),
-        [Op.lte]: sequelize.literal(`DATE_FORMAT('${date || 'CURDATE()'}', '%Y-%m-%d 23:59:59')`),
+        [Op.gte]: sequelize.literal(`DATE('${targetDate}')`),
+        [Op.lte]: sequelize.literal(
+          `DATE('${targetDate}') + INTERVAL 1 DAY - INTERVAL 1 SECOND`
+        ),
       };
+
+      console.log('Date filtering details:', {
+        targetDate,
+        whereCreatedAt: where.created_at,
+      });
     } else if (type === 'pending') {
       where.payment_status = 'pending';
     } else {
@@ -389,8 +431,16 @@ exports.getOrders = async (req, res) => {
     // Pagination
     const queryLimit = parseInt(limit) || 10;
     const queryOffset = parseInt(offset) || 0;
-    if (isNaN(queryLimit) || queryLimit < 1 || isNaN(queryOffset) || queryOffset < 0) {
-      console.log('Validation failed: Invalid limit or offset', { limit, offset });
+    if (
+      isNaN(queryLimit) ||
+      queryLimit < 1 ||
+      isNaN(queryOffset) ||
+      queryOffset < 0
+    ) {
+      console.log('Validation failed: Invalid limit or offset', {
+        limit,
+        offset,
+      });
       return res.status(400).json({ message: 'Invalid limit or offset' });
     }
 
@@ -403,6 +453,28 @@ exports.getOrders = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
 
+    // Debug: Let's also check all orders for this customer to see what exists
+    const allCustomerOrders = await Order.findAll({
+      where: { customer_id },
+      include: [{ model: Order_Item, as: 'order_items', required: false }],
+      order: [['created_at', 'DESC']],
+    });
+    console.log(
+      'All orders for customer (without date filter):',
+      allCustomerOrders.map((order) => ({
+        id: order.id,
+        meal_time: order.meal_time,
+        created_at: order.created_at,
+        status: order.status,
+      }))
+    );
+
+    // Debug: Let's also check the raw data
+    console.log(
+      'Raw order data:',
+      allCustomerOrders.map((order) => order.toJSON())
+    );
+
     // Fetch orders
     const orders = await Order.findAll({
       where,
@@ -413,7 +485,10 @@ exports.getOrders = async (req, res) => {
     });
 
     // Log fetched orders
-    console.log('Orders found:', orders.map(order => order.toJSON()));
+    console.log(
+      'Orders found:',
+      orders.map((order) => order.toJSON())
+    );
 
     return res.status(200).json({
       message: 'Orders retrieved successfully',
