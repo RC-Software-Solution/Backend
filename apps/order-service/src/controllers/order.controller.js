@@ -1,13 +1,8 @@
 const redisPublisher = require('../services/redisPublisher');
+const userServiceClient = require('../services/userServiceClient');
 const { Op } = require('sequelize');
 
-const {
-  Order,
-  Order_Item,
-  Meal_Session,
-  sequelize,
-  User,
-} = require('../models');
+const { Order, Order_Item, Meal_Session, sequelize } = require('../models');
 
 exports.createOrder = async (req, res) => {
   const { customer_id, items, total_price, meal_time } = req.body;
@@ -38,10 +33,22 @@ exports.createOrder = async (req, res) => {
         .json({ message: 'You have more than two unpaid order' });
     }
 
-    // Verify customer exists
-    const customer = await User.findByPk(customer_id);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found' });
+    // Verify customer exists and get area_id from user-service
+    let customerAreaId = null;
+    try {
+      const customerData = await userServiceClient.getUserById(customer_id);
+      customerAreaId = customerData.area_id;
+      console.log(
+        `Fetched area_id ${customerAreaId} for customer ${customer_id}`
+      );
+    } catch (error) {
+      console.error(
+        'Error fetching customer data from user-service:',
+        error.message
+      );
+      return res
+        .status(404)
+        .json({ message: 'Customer not found or user-service unavailable' });
     }
 
     const mealSession = await Meal_Session.findOne({
@@ -65,6 +72,7 @@ exports.createOrder = async (req, res) => {
       const newOrder = await Order.create(
         {
           customer_id,
+          area_id: customerAreaId,
           total_price,
           meal_time,
         },
@@ -311,9 +319,18 @@ exports.deleteOrder = async (req, res) => {
 };
 
 exports.getOrders = async (req, res) => {
-  const { type, meal_time, date, status, meal_type, limit, offset } = req.query;
-  // const customer_id = req.user?.id; // Uncomment when using auth middleware
-  const customer_id = 'c4d96e10-5f3c-4381-ac92-4b6b76c974f7'; // Temporary for testing, replace with req.user.id
+  const {
+    type,
+    meal_time,
+    date,
+    status,
+    meal_type,
+    limit,
+    offset,
+    customer_id,
+    area_id,
+    payment_status,
+  } = req.query;
 
   try {
     // Log input parameters
@@ -326,6 +343,8 @@ exports.getOrders = async (req, res) => {
       limit,
       offset,
       customer_id,
+      user_role: req.user?.role,
+      user_id: req.user?.id
     });
 
     // Basic input validation
@@ -339,11 +358,46 @@ exports.getOrders = async (req, res) => {
         .status(400)
         .json({ message: 'meal_time is required for type=current' });
     }
-    if (!customer_id) {
-      console.log('Validation failed: customer_id is missing');
-      return res
-        .status(401)
-        .json({ message: 'Unauthorized: User not authenticated' });
+
+    // Role-based access control
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+    const userAreaId = req.user?.area_id;
+
+    // Build where clause based on user role
+    const where = {};
+    
+    if (userRole === 'customer') {
+      // Customers can only see their own orders
+      where.customer_id = userId;
+      console.log('Customer access: filtering by customer_id =', userId);
+      
+    } else if (userRole === 'delivery_person') {
+      // Delivery persons can see orders in their assigned area
+      if (area_id && area_id !== userAreaId.toString()) {
+        return res.status(403).json({ 
+          message: 'You can only view orders in your assigned area' 
+        });
+      }
+      where.area_id = userAreaId;
+      console.log('Delivery person access: filtering by area_id =', userAreaId);
+      
+    } else if (userRole === 'admin' || userRole === 'super_admin') {
+      // Admins can see all orders, but can filter by customer_id or area_id if provided
+      if (customer_id) {
+        where.customer_id = customer_id;
+        console.log('Admin access: filtering by customer_id =', customer_id);
+      }
+      if (area_id) {
+        where.area_id = area_id;
+        console.log('Admin access: filtering by area_id =', area_id);
+      }
+      console.log('Admin access: no restrictions applied');
+      
+    } else {
+      return res.status(403).json({ 
+        message: 'Invalid user role or insufficient permissions' 
+      });
     }
 
     // Normalize meal_time to lowercase and validate against ENUM
@@ -360,8 +414,6 @@ exports.getOrders = async (req, res) => {
     }
     console.log('Normalized meal_time:', normalizedMealTime);
 
-    // Build where clause for orders
-    const where = { customer_id };
     const include = [
       {
         model: Order_Item,
@@ -422,6 +474,10 @@ exports.getOrders = async (req, res) => {
       where.status = status;
       console.log('Applying status filter:', status);
     }
+    if (payment_status) {
+      where.payment_status = payment_status;
+      console.log('Applying payment_status filter:', payment_status);
+    }
     if (meal_type) {
       include[0].where = include[0].where || {};
       include[0].where.meal_type = meal_type;
@@ -453,27 +509,8 @@ exports.getOrders = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
 
-    // Debug: Let's also check all orders for this customer to see what exists
-    const allCustomerOrders = await Order.findAll({
-      where: { customer_id },
-      include: [{ model: Order_Item, as: 'order_items', required: false }],
-      order: [['created_at', 'DESC']],
-    });
-    console.log(
-      'All orders for customer (without date filter):',
-      allCustomerOrders.map((order) => ({
-        id: order.id,
-        meal_time: order.meal_time,
-        created_at: order.created_at,
-        status: order.status,
-      }))
-    );
-
-    // Debug: Let's also check the raw data
-    console.log(
-      'Raw order data:',
-      allCustomerOrders.map((order) => order.toJSON())
-    );
+    // Debug: Log the final where clause for troubleshooting
+    console.log('Final where clause:', where);
 
     // Fetch orders
     const orders = await Order.findAll({
@@ -506,5 +543,51 @@ exports.getOrders = async (req, res) => {
       date,
     });
     return res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updatePaymentStatus = async (req, res) => {
+  const { order_id } = req.params;
+  const { payment_status } = req.body;
+
+  try {
+    if (!order_id) {
+      return res.status(400).json({ message: 'order_id is required' });
+    }
+
+    if (
+      !payment_status ||
+      !['pending', 'paid', 'unpaid'].includes(payment_status)
+    ) {
+      return res.status(400).json({
+        message:
+          'Invalid payment_status. Must be one of: pending, paid, unpaid',
+      });
+    }
+
+    const order = await Order.findByPk(order_id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    await order.update({ payment_status });
+
+    res.status(200).json({
+      message: 'Payment status updated successfully',
+      order_id,
+      payment_status,
+      order: {
+        id: order.id,
+        customer_id: order.customer_id,
+        area_id: order.area_id,
+        payment_status: order.payment_status,
+        status: order.status,
+        total_price: order.total_price,
+        meal_time: order.meal_time,
+      },
+    });
+  } catch (error) {
+    console.error('Error updating payment status:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };

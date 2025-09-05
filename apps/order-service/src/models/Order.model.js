@@ -8,6 +8,11 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         references: { model: 'users', key: 'id' },
       },
+      area_id: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+        comment: 'Area ID of the customer, fetched from user-service',
+      },
       status: {
         type: DataTypes.ENUM(
           'pending',
@@ -25,7 +30,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       total_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
       payment_status: {
-        type: DataTypes.ENUM('pending', 'paid', 'failed'),
+        type: DataTypes.ENUM('pending', 'paid', 'unpaid'),
         defaultValue: 'pending',
         allowNull: false,
       },
