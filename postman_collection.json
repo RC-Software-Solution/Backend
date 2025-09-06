@@ -1,0 +1,356 @@
+{
+  "info": {
+    "name": "RC Software - Order & Delivery Services API",
+    "description": "Collection for testing Order Service and Delivery Service APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "order_service_url",
+      "value": "http://localhost:4002",
+      "type": "string"
+    },
+    {
+      "key": "delivery_service_url",
+      "value": "http://localhost:4003",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Order Service",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"CUST-1734567890-abc123\",\n  \"items\": [\n    {\n      \"quantity\": 2,\n      \"food_name\": \"Chicken Biryani\",\n      \"food_description\": \"Delicious chicken biryani with basmati rice\",\n      \"meal_type\": \"non-veg\",\n      \"price\": 250.00\n    },\n    {\n      \"quantity\": 1,\n      \"food_name\": \"Vegetable Curry\",\n      \"food_description\": \"Mixed vegetable curry with spices\",\n      \"meal_type\": \"veg\",\n      \"price\": 150.00\n    }\n  ],\n  \"total_price\": 650.00,\n  \"meal_time\": \"lunch\"\n}"
+            },
+            "url": {
+              "raw": "{{order_service_url}}/api/orders",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "orders"]
+            }
+          }
+        },
+        {
+          "name": "Get Current Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{order_service_url}}/api/orders?type=current&meal_time=lunch",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "orders"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "current"
+                },
+                {
+                  "key": "meal_time",
+                  "value": "lunch"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Pending Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{order_service_url}}/api/orders?type=pending&limit=20&offset=0",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "orders"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "pending"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "offset",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Edit Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    {\n      \"quantity\": 3,\n      \"food_name\": \"Chicken Biryani\",\n      \"food_description\": \"Delicious chicken biryani with basmati rice\",\n      \"meal_type\": \"non-veg\",\n      \"price\": 250.00\n    },\n    {\n      \"quantity\": 2,\n      \"food_name\": \"Dal Tadka\",\n      \"food_description\": \"Traditional dal with tempering\",\n      \"meal_type\": \"veg\",\n      \"price\": 120.00\n    }\n  ],\n  \"total_price\": 990.00\n}"
+            },
+            "url": {
+              "raw": "{{order_service_url}}/api/orders/ORD-1734567890123-abc123",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "orders", "ORD-1734567890123-abc123"]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_status\": \"paid\"\n}"
+            },
+            "url": {
+              "raw": "{{order_service_url}}/api/orders/ORD-1734567890123-abc123/payment",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "orders", "ORD-1734567890123-abc123", "payment"]
+            }
+          }
+        },
+        {
+          "name": "Delete Order",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{order_service_url}}/api/orders/ORD-1734567890123-abc123",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "orders", "ORD-1734567890123-abc123"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Delivery Service",
+      "item": [
+        {
+          "name": "Get Area Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{delivery_service_url}}/api/delivery/orders/area?area_id=1&meal_time=lunch",
+              "host": ["{{delivery_service_url}}"],
+              "path": ["api", "delivery", "orders", "area"],
+              "query": [
+                {
+                  "key": "area_id",
+                  "value": "1"
+                },
+                {
+                  "key": "meal_time",
+                  "value": "lunch"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Area Orders - All Meals",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{delivery_service_url}}/api/delivery/orders/area?area_id=1",
+              "host": ["{{delivery_service_url}}"],
+              "path": ["api", "delivery", "orders", "area"],
+              "query": [
+                {
+                  "key": "area_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Area Orders - With Date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{delivery_service_url}}/api/delivery/orders/area?area_id=1&meal_time=dinner&date=2024-01-15",
+              "host": ["{{delivery_service_url}}"],
+              "path": ["api", "delivery", "orders", "area"],
+              "query": [
+                {
+                  "key": "area_id",
+                  "value": "1"
+                },
+                {
+                  "key": "meal_time",
+                  "value": "dinner"
+                },
+                {
+                  "key": "date",
+                  "value": "2024-01-15"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get My Area Orders",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{delivery_service_url}}/api/delivery/orders/my-area?area_id=1",
+              "host": ["{{delivery_service_url}}"],
+              "path": ["api", "delivery", "orders", "my-area"],
+              "query": [
+                {
+                  "key": "area_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Payment Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_status\": \"paid\"\n}"
+            },
+            "url": {
+              "raw": "{{delivery_service_url}}/api/delivery/orders/ORD-1734567890123-abc123/payment",
+              "host": ["{{delivery_service_url}}"],
+              "path": ["api", "delivery", "orders", "ORD-1734567890123-abc123", "payment"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Test Cases",
+      "item": [
+        {
+          "name": "Test - Invalid Meal Time",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{order_service_url}}/api/orders?type=current&meal_time=invalidmeal",
+              "host": ["{{order_service_url}}"],
+              "path": ["api", "orders"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "current"
+                },
+                {
+                  "key": "meal_time",
+                  "value": "invalidmeal"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Test - Missing Area ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{delivery_service_url}}/api/delivery/orders/area",
+              "host": ["{{delivery_service_url}}"],
+              "path": ["api", "delivery", "orders", "area"]
+            }
+          }
+        },
+        {
+          "name": "Test - Invalid Payment Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_status\": \"invalid_status\"\n}"
+            },
+            "url": {
+              "raw": "{{delivery_service_url}}/api/delivery/orders/ORD-1734567890123-abc123/payment",
+              "host": ["{{delivery_service_url}}"],
+              "path": ["api", "delivery", "orders", "ORD-1734567890123-abc123", "payment"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
