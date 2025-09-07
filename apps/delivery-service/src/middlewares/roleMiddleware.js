@@ -1,0 +1,11 @@
+// Role-based access control for delivery service
+exports.checkRole = (allowedRoles) => {
+  return (req, res, next) => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ 
+        error: "You don't have permission to perform this action" 
+      });
+    }
+    next();
+  };
+};

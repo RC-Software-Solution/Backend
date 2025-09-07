@@ -74,12 +74,14 @@ services:
       - DB_NAME=rc
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      - JWT_PRIVATE_KEY_PATH=/app/secrets/private.pem
     ports:
       - "4001:4001"
     volumes:
       - ../apps/user-service:/app
       - /app/node_modules
       - ../secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json:/app/secrets/rc-notification-52917-firebase-adminsdk-fbsvc-d9174cc5ec.json
+      - ../secrets/private.pem:/app/secrets/private.pem
 
     
   order-service:
@@ -98,12 +100,13 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - USER_SERVICE_HOST=user-service
       - USER_SERVICE_PORT=4001
-      - JWT_SECRET=your_jwt_secret_key_here
+      - JWT_PUBLIC_KEY_PATH=/app/secrets/public.pem
     ports:
       - "4002:4002"
     volumes:
       - ../apps/order-service:/app
       - /app/node_modules
+      - ../secrets/public.pem:/app/secrets/public.pem
 
   delivery-service:
     build: ../apps/delivery-service
@@ -116,12 +119,13 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - ORDER_SERVICE_HOST=order-service
       - ORDER_SERVICE_PORT=4002
-      - JWT_SECRET=your_jwt_secret_key_here
+      - JWT_PUBLIC_KEY_PATH=/app/secrets/public.pem
     ports:
       - "4003:4003"
     volumes:
       - ../apps/delivery-service:/app
       - /app/node_modules
+      - ../secrets/public.pem:/app/secrets/public.pem
   
 
 volumes:

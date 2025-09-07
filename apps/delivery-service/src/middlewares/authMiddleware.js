@@ -1,6 +1,5 @@
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 const fs = require("fs");
-const userServiceClient = require("../services/userServiceClient");
 const { refreshAccessToken, getRefreshTokenFromRequest, sendTokenRefreshResponse } = require("../utils/auth-utils");
 
 // Load RSA public key for JWT verification
@@ -25,14 +24,14 @@ exports.authMiddleware = async (req, res, next) => {
     const publicKey = getPublicKey();
     const decoded = jwt.verify(token, publicKey, { algorithms: ['RS256'] });
     
-    // Get user data from user-service
-    const user = await userServiceClient.getUserById(decoded.id);
+    // For delivery service, we can use the decoded token data directly
+    // since it contains the user info we need
+    req.user = {
+      id: decoded.id,
+      role: decoded.role,
+      area_id: decoded.area_id
+    };
     
-    if (!user) {
-      return res.status(401).json({ error: "Invalid token. User not found." });
-    }
-
-    req.user = user;
     next();
   } catch (error) {
     console.error("Auth middleware error:", error.message);

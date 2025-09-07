@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const { sendPushNotification } = require('../services/notificationService');
 const { sendEmail } = require('../services/emailService');
-const { generateToken } = require('../utils/jwt');
+const { generateAccessToken, generateRefreshToken, verifyToken } = require('../utils/jwt');
 const { hashPassword, comparePassword } = require('../utils/password');
 
 exports.signup = async (req, res) => {
@@ -16,8 +16,8 @@ exports.signup = async (req, res) => {
 
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      if(existingUser.status !== 'deleted'){
-        return res.status(400).json({ error: 'Email already registered' }); 
+      if (existingUser.status !== 'deleted') {
+        return res.status(400).json({ error: 'Email already registered' });
       }
       existingUser.status = 'active';
       existingUser.deleted_at = null;
@@ -30,7 +30,8 @@ exports.signup = async (req, res) => {
       await existingUser.save();
 
       return res.status(201).json({
-        message: 'User registered successfully. Please log in', user: existingUser
+        message: 'User registered successfully. Please log in',
+        user: existingUser,
       });
     }
 
@@ -105,11 +106,17 @@ exports.login = async (req, res) => {
       await user.save();
     }
 
-    const token = generateToken(user);
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    // Store refresh token in database
+    user.refresh_token = refreshToken;
+    await user.save();
 
     res.json({
       message: 'login successful',
-      token,
+      access_token: accessToken,
+      refresh_token: refreshToken,
       user: {
         id: user.id,
         full_name: user.full_name,
@@ -142,7 +149,7 @@ exports.getProfile = async (req, res) => {
 exports.getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
-    
+
     if (!userId) {
       return res.status(400).json({ error: 'User ID is required' });
     }
@@ -204,13 +211,14 @@ exports.deleteAccount = async (req, res) => {
 
     const user = await User.findByPk(userId);
 
-    if(!user){
-      return res.status(404).json({ error: "user not found"});
+    if (!user) {
+      return res.status(404).json({ error: 'user not found' });
     }
 
-    if( user.unpaid_orders_count > 2){
+    if (user.unpaid_orders_count > 2) {
       return res.status(400).json({
-        error: "You have unpaid orders. Please clear your orders before deleting your account"
+        error:
+          'You have unpaid orders. Please clear your orders before deleting your account',
       });
     }
 
@@ -219,8 +227,27 @@ exports.deleteAccount = async (req, res) => {
     await user.save();
 
     res.json({ message: 'Account deleted successfully' });
-    
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-}
+};
+
+exports.refreshToken = async (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+    if (!refresh_token) return res.status(400).json({ message: 'Refresh token required' });
+
+    const payload = verifyToken(refresh_token);
+    const user = await User.findByPk(payload.id);
+
+    if (!user || user.refresh_token !== refresh_token) {
+      return res.status(401).json({ message: 'Invalid or revoked refresh token' });
+    }
+
+    const newAccessToken = generateAccessToken(user);
+    res.json({ access_token: newAccessToken });
+  } catch (err) {
+    console.error('Refresh token error:', err.message);
+    res.status(401).json({ message: 'Invalid or expired refresh token' });
+  }
+};
