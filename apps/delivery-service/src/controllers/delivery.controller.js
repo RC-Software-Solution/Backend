@@ -28,12 +28,13 @@ exports.getAreaOrders = async (req, res) => {
         message: 'Invalid payment_status. Must be one of: pending, paid, failed' 
       });
     }
-
+    orderServiceClient.setAuthHeader(req.header("Authorization"));
     const orders = await orderServiceClient.getOrdersByArea(
       area_id, 
       meal_time, 
       date, 
-      payment_status
+      payment_status,
+      req.header("Authorization")
     );
 
     res.status(200).json({
@@ -77,6 +78,7 @@ exports.updatePaymentStatus = async (req, res) => {
       });
     }
 
+    orderServiceClient.setAuthHeader(req.header("Authorization"));
     const result = await orderServiceClient.updatePaymentStatus(order_id, payment_status);
 
     res.status(200).json({
@@ -102,19 +104,19 @@ exports.updatePaymentStatus = async (req, res) => {
  */
 exports.getMyAreaOrders = async (req, res) => {
   try {
-    // This would typically get the delivery person's area from their profile
-    // For now, we'll use a query parameter, but in production this should come from auth
-    const { area_id } = req.query;
+    // Get the delivery person's area from the authenticated user
+    const userAreaId = req.user.area_id;
     
-    if (!area_id) {
+    if (!userAreaId) {
       return res.status(400).json({ 
-        message: 'area_id is required. In production, this should come from authenticated user profile.' 
+        message: 'No area assigned to your account. Please contact administrator.' 
       });
     }
 
+    orderServiceClient.setAuthHeader(req.header("Authorization"));
     // Get current meal session orders for the delivery person's area
     const orders = await orderServiceClient.getOrdersByArea(
-      area_id, 
+      userAreaId, 
       null, // all meal times
       null, // today
       'pending' // only pending payments
@@ -122,7 +124,7 @@ exports.getMyAreaOrders = async (req, res) => {
 
     res.status(200).json({
       message: 'Your area orders retrieved successfully',
-      area_id,
+      area_id: userAreaId,
       orders: orders.orders || [],
       total: orders.orders ? orders.orders.length : 0
     });

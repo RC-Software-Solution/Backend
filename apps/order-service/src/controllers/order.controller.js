@@ -344,7 +344,7 @@ exports.getOrders = async (req, res) => {
       offset,
       customer_id,
       user_role: req.user?.role,
-      user_id: req.user?.id
+      user_id: req.user?.id,
     });
 
     // Basic input validation
@@ -362,27 +362,27 @@ exports.getOrders = async (req, res) => {
     // Role-based access control
     const userRole = req.user?.role;
     const userId = req.user?.id;
-    const userAreaId = req.user?.area_id;
 
     // Build where clause based on user role
     const where = {};
-    
+
     if (userRole === 'customer') {
       // Customers can only see their own orders
       where.customer_id = userId;
       console.log('Customer access: filtering by customer_id =', userId);
-      
-    } else if (userRole === 'delivery_person') {
-      // Delivery persons can see orders in their assigned area
-      if (area_id && area_id !== userAreaId.toString()) {
-        return res.status(403).json({ 
-          message: 'You can only view orders in your assigned area' 
+    } 
+    else if (userRole === 'delivery_person') {
+      // Delivery persons must select an area from query
+      if (!area_id) {
+        return res.status(400).json({
+          message:
+            'Delivery person must select an area (area_id query parameter required)',
         });
       }
-      where.area_id = userAreaId;
-      console.log('Delivery person access: filtering by area_id =', userAreaId);
-      
-    } else if (userRole === 'admin' || userRole === 'super_admin') {
+      where.area_id = parseInt(area_id);
+      console.log('Delivery person access: filtering by area_id =', area_id);
+    } 
+    else if (userRole === 'admin' || userRole === 'super_admin') {
       // Admins can see all orders, but can filter by customer_id or area_id if provided
       if (customer_id) {
         where.customer_id = customer_id;
@@ -393,10 +393,10 @@ exports.getOrders = async (req, res) => {
         console.log('Admin access: filtering by area_id =', area_id);
       }
       console.log('Admin access: no restrictions applied');
-      
-    } else {
-      return res.status(403).json({ 
-        message: 'Invalid user role or insufficient permissions' 
+    } 
+    else {
+      return res.status(403).json({
+        message: 'Invalid user role or insufficient permissions',
       });
     }
 
