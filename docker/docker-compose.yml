@@ -127,6 +127,30 @@ services:
       - /app/node_modules
       - ../secrets/public.pem:/app/secrets/public.pem
   
+  locations-service:
+    build: ../apps/locations-service
+    container_name: locations-service
+    command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
+    depends_on:
+      - db
+      - user-service
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=rc
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - USER_SERVICE_HOST=user-service
+      - USER_SERVICE_PORT=4001
+      - JWT_PUBLIC_KEY_PATH=/app/secrets/public.pem
+    ports:
+      - "4004:4004"
+    volumes:
+      - ../apps/locations-service:/app
+      - /app/node_modules
+      - ../secrets/public.pem:/app/secrets/public.pem
+
 
 volumes:
   mysql-data:

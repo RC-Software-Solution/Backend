@@ -22,10 +22,10 @@ exports.getAreaOrders = async (req, res) => {
       });
     }
 
-    // Validate payment_status if provided
-    if (payment_status && !['pending', 'paid', 'failed'].includes(payment_status)) {
+    // Validate payment_status if provided (must match order-service)
+    if (payment_status && !['pending', 'paid', 'unpaid'].includes(payment_status)) {
       return res.status(400).json({ 
-        message: 'Invalid payment_status. Must be one of: pending, paid, failed' 
+        message: 'Invalid payment_status. Must be one of: pending, paid, unpaid' 
       });
     }
     orderServiceClient.setAuthHeader(req.header("Authorization"));

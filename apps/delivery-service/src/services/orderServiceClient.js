@@ -151,10 +151,10 @@ class OrderServiceClient {
       const response = await this.makeRequest(
         `/api/orders/${orderId}/payment`,
         'PUT',
-        headers,
         {
           payment_status: paymentStatus,
-        }
+        },
+        headers
       );
       return response;
     } catch (error) {

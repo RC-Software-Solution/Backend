@@ -251,3 +251,5 @@ exports.refreshToken = async (req, res) => {
     res.status(401).json({ message: 'Invalid or expired refresh token' });
   }
 };
+
+// get profiles for admin
