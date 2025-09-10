@@ -151,6 +151,31 @@ services:
       - /app/node_modules
       - ../secrets/public.pem:/app/secrets/public.pem
 
+  menu-service:
+    build: ../apps/menu-service
+    container_name: menu-service
+    command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
+    depends_on:
+      - db
+      - user-service
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=rc
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - USER_SERVICE_HOST=user-service
+      - USER_SERVICE_PORT=4001
+      - JWT_PUBLIC_KEY_PATH=/app/secrets/public.pem
+      - PORT=4005
+    ports:
+      - "4005:4005"
+    volumes:
+      - ../apps/menu-service:/app
+      - /app/node_modules
+      - ../secrets/public.pem:/app/secrets/public.pem
+
 
 volumes:
   mysql-data:

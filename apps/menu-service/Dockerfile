@@ -8,13 +8,13 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install any dependencies
-RUN npm ci --only=production
+RUN npm ci
 
 # Copy the rest of the application code
 COPY . .
 
-# Make port 4001 available to the world outside this container
-EXPOSE 4003
+# Expose the service port
+EXPOSE 4005
 
-# Define the command to run your app using node
-CMD ["nodemon", "index.js"]
+# Define the default command (docker-compose overrides to nodemon for dev)
+CMD ["node", "index.js"]
