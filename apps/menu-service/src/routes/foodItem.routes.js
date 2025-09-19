@@ -29,14 +29,14 @@ router.post('/', checkRole(adminRoles), createFoodItem);
  * @access Admin, Super Admin
  * @query page, limit, meal_type
  */
-router.get('/', checkRole(adminRoles), getAllFoodItems);
+router.get('/', checkRole([...adminRoles, 'customer']), getAllFoodItems);
 
 /**
  * @route GET /api/food-items/:id
  * @desc Get a single food item by ID
  * @access Admin, Super Admin
  */
-router.get('/:id', checkRole(adminRoles), getFoodItemById);
+router.get('/:id', checkRole([...adminRoles, 'customer']), getFoodItemById);
 
 /**
  * @route PUT /api/food-items/:id

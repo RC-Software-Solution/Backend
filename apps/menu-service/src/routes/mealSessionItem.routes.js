@@ -17,7 +17,7 @@ router.use(authMiddleware);
 router.post('/', checkRole(adminRoles), createMealSessionItem);
 
 // List items for a given session
-router.get('/:meal_session_id', checkRole(adminRoles), listMealSessionItems);
+router.get('/:meal_session_id', checkRole([...adminRoles, 'customer']), listMealSessionItems);
 
 // Update a session item by id
 router.put('/:id', checkRole(adminRoles), updateMealSessionItem);

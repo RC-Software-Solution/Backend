@@ -30,14 +30,14 @@ router.post('/', checkRole(adminRoles), createMealSession);
  * @access Admin, Super Admin
  * @query page, limit, meal_time, date
  */
-router.get('/', checkRole(adminRoles), getAllMealSessions);
+router.get('/', checkRole([...adminRoles, 'customer']), getAllMealSessions);
 
 /**
  * @route GET /api/meal-sessions/:id
  * @desc Get a single meal session by ID with food items
  * @access Admin, Super Admin
  */
-router.get('/:id', checkRole(adminRoles), getMealSessionById);
+router.get('/:id', checkRole([...adminRoles, 'customer']), getMealSessionById);
 
 /**
  * @route PUT /api/meal-sessions/:id

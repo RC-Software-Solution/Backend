@@ -16,14 +16,14 @@ router.use(authMiddleware);
  * @desc Decrement availability for a session item
  * @access Admin, Super Admin
  */
-router.post('/decrement', checkRole(adminRoles), decrementItemAvailability);
+router.post('/decrement', checkRole([...adminRoles, 'customer']), decrementItemAvailability);
 
 /**
  * @route POST /api/inventory/increment
  * @desc Increment availability for a session item
  * @access Admin, Super Admin
  */
-router.post('/increment', checkRole(adminRoles), incrementItemAvailability);
+router.post('/increment', checkRole([...adminRoles, 'customer']), incrementItemAvailability);
 
 module.exports = router;
 
