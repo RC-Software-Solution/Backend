@@ -45,6 +45,19 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Meal session not found' });
     }
 
+    // Validate order time within session window
+    try {
+      const now = new Date();
+      const startTime = new Date(`${now.toDateString()} ${mealSession.start_time}`);
+      const endTime = new Date(`${now.toDateString()} ${mealSession.end_time}`);
+      if (now < startTime || now > endTime) {
+        return res.status(400).json({ message: 'Order cannot be placed outside the meal session time window' });
+      }
+    } catch (e) {
+      console.error('Time window validation failed:', e.message);
+      return res.status(500).json({ message: 'Failed to validate session time window' });
+    }
+
     // Resolve session items via menu-service and decrement inventory there first
     const sessionItems = await menuServiceClient.getSessionItems(mealSession.id, authHeader);
     const idToSessionItem = new Map(sessionItems.map((si) => [si.food_item_id, si]));
@@ -318,11 +331,11 @@ exports.editOrder = async (req, res) => {
           { transaction: t }
         );
       }
-    });
+        });
 
     // Broadcast inventory changes
     if (changedSessionItems.length > 0) {
-      await redisPublisher.publishOrderUpdate({
+        await redisPublisher.publishOrderUpdate({
         type: 'session_items.updated',
         sessionId: mealSession.id,
         items: changedSessionItems.map((row) => ({
@@ -438,7 +451,7 @@ exports.deleteOrder = async (req, res) => {
 
     // Broadcast inventory changes
     if (changedSessionItems.length > 0) {
-      await redisPublisher.publishOrderUpdate({
+    await redisPublisher.publishOrderUpdate({
         type: 'session_items.updated',
         sessionId: mealSession.id,
         items: changedSessionItems.map((row) => ({

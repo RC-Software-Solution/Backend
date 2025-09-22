@@ -40,6 +40,62 @@ const createMealSessionItem = async (req, res) => {
   }
 };
 
+// List items for a session by meal_time and date
+const listMealSessionItemsByTime = async (req, res) => {
+  try {
+    const { meal_time, date } = req.query;
+    
+    if (!meal_time || !date) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'meal_time and date query parameters are required' 
+      });
+    }
+
+    // Validate meal_time
+    const validMealTimes = ['breakfast', 'lunch', 'dinner'];
+    if (!validMealTimes.includes(meal_time)) {
+      return res.status(400).json({
+        success: false,
+        message: 'meal_time must be one of: breakfast, lunch, dinner'
+      });
+    }
+
+    // Find the meal session first
+    const mealSession = await Meal_Session.findOne({
+      where: { meal_time, date }
+    });
+
+    if (!mealSession) {
+      return res.status(404).json({
+        success: false,
+        message: 'Meal session not found for the given meal_time and date'
+      });
+    }
+
+    // Get session items with food item details
+    const items = await Meal_Session_Item.findAll({
+      where: { meal_session_id: mealSession.id },
+      include: [{ model: Food_Item, as: 'foodItem' }]
+    });
+
+    res.status(200).json({ 
+      success: true, 
+      data: items,
+      session: {
+        id: mealSession.id,
+        meal_time: mealSession.meal_time,
+        date: mealSession.date,
+        start_time: mealSession.start_time,
+        end_time: mealSession.end_time
+      }
+    });
+  } catch (error) {
+    console.error('listMealSessionItemsByTime error', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch session items' });
+  }
+};
+
 // List items for a session
 const listMealSessionItems = async (req, res) => {
   try {
@@ -100,6 +156,7 @@ const deleteMealSessionItem = async (req, res) => {
 module.exports = {
   createMealSessionItem,
   listMealSessionItems,
+  listMealSessionItemsByTime,
   updateMealSessionItem,
   deleteMealSessionItem
 };

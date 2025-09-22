@@ -5,6 +5,7 @@ const { checkRole } = require('../middlewares/roleMiddleware');
 const {
   createMealSessionItem,
   listMealSessionItems,
+  listMealSessionItemsByTime,
   updateMealSessionItem,
   deleteMealSessionItem
 } = require('../controllers/mealSessionItem.controller');
@@ -16,7 +17,10 @@ router.use(authMiddleware);
 // Create a session item
 router.post('/', checkRole(adminRoles), createMealSessionItem);
 
-// List items for a given session
+// List items for a given session by meal_time and date
+router.get('/by-session', checkRole([...adminRoles, 'customer']), listMealSessionItemsByTime);
+
+// List items for a given session by ID
 router.get('/:meal_session_id', checkRole([...adminRoles, 'customer']), listMealSessionItems);
 
 // Update a session item by id
