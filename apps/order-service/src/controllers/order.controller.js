@@ -40,7 +40,11 @@ exports.createOrder = async (req, res) => {
 
     const today = new Date().toISOString().split('T')[0];
     const authHeader = req.headers['authorization'] || null;
-    const mealSession = await menuServiceClient.getMealSessionByTime(today, meal_time, authHeader);
+    const mealSession = await menuServiceClient.getMealSessionByTime(
+      today,
+      meal_time,
+      authHeader
+    );
     if (!mealSession) {
       return res.status(400).json({ message: 'Meal session not found' });
     }
@@ -48,19 +52,31 @@ exports.createOrder = async (req, res) => {
     // Validate order time within session window
     try {
       const now = new Date();
-      const startTime = new Date(`${now.toDateString()} ${mealSession.start_time}`);
+      const startTime = new Date(
+        `${now.toDateString()} ${mealSession.start_time}`
+      );
       const endTime = new Date(`${now.toDateString()} ${mealSession.end_time}`);
       if (now < startTime || now > endTime) {
-        return res.status(400).json({ message: 'Order cannot be placed outside the meal session time window' });
+        return res.status(400).json({
+          message:
+            'Order cannot be placed outside the meal session time window',
+        });
       }
     } catch (e) {
       console.error('Time window validation failed:', e.message);
-      return res.status(500).json({ message: 'Failed to validate session time window' });
+      return res
+        .status(500)
+        .json({ message: 'Failed to validate session time window' });
     }
 
     // Resolve session items via menu-service and decrement inventory there first
-    const sessionItems = await menuServiceClient.getSessionItems(mealSession.id, authHeader);
-    const idToSessionItem = new Map(sessionItems.map((si) => [si.food_item_id, si]));
+    const sessionItems = await menuServiceClient.getSessionItems(
+      mealSession.id,
+      authHeader
+    );
+    const idToSessionItem = new Map(
+      sessionItems.map((si) => [si.food_item_id, si])
+    );
 
     const decremented = [];
     try {
@@ -88,7 +104,8 @@ exports.createOrder = async (req, res) => {
             d.food_item_id,
             // increment back exactly what we decremented; assume one line per item
             // if API doesn't provide delta, default to 1
-            items.find((it) => it.food_item_id === d.food_item_id)?.quantity || 1,
+            items.find((it) => it.food_item_id === d.food_item_id)?.quantity ||
+              1,
             authHeader
           );
         } catch (compErr) {
@@ -102,7 +119,8 @@ exports.createOrder = async (req, res) => {
     const computedTotal = items.reduce((acc, item) => {
       const si = idToSessionItem.get(item.food_item_id);
       const fi = (si && (si.foodItem || si.food_item)) || {};
-      const priceNum = fi && fi.price != null ? Number(fi.price) : Number(item.price || 0);
+      const priceNum =
+        fi && fi.price != null ? Number(fi.price) : Number(item.price || 0);
       return acc + priceNum * Number(item.quantity || 0);
     }, 0);
 
@@ -157,11 +175,9 @@ exports.createOrder = async (req, res) => {
         .json({ message: 'Insufficient quantity for one or more items' });
     }
     if (error.message === 'SESSION_ITEM_NOT_FOUND') {
-      return res
-        .status(404)
-        .json({
-          message: 'One or more session items not found for this session',
-        });
+      return res.status(404).json({
+        message: 'One or more session items not found for this session',
+      });
     }
     return res.status(500).json({ message: 'Server error' });
   }
@@ -172,12 +188,7 @@ exports.editOrder = async (req, res) => {
   const { order_id } = req.params;
 
   try {
-    if (
-      !items ||
-      !Array.isArray(items) ||
-      items.length === 0 ||
-      !order_id
-    ) {
+    if (!items || !Array.isArray(items) || items.length === 0 || !order_id) {
       return res
         .status(400)
         .json({ message: 'Missing or invalid required fields' });
@@ -193,20 +204,28 @@ exports.editOrder = async (req, res) => {
 
     // Verify order ownership
     if (order.customer_id !== req.user?.id) {
-      return res.status(403).json({ message: 'Unauthorized to edit this order' });
+      return res
+        .status(403)
+        .json({ message: 'Unauthorized to edit this order' });
     }
 
     // Get meal session from menu-service
     const today = new Date().toISOString().split('T')[0];
     const authHeader = req.headers['authorization'] || null;
-    const mealSession = await menuServiceClient.getMealSessionByTime(today, order.meal_time, authHeader);
+    const mealSession = await menuServiceClient.getMealSessionByTime(
+      today,
+      order.meal_time,
+      authHeader
+    );
     if (!mealSession) {
       return res.status(404).json({ message: 'Meal session not found' });
     }
 
     // Validate time window
     const now = new Date();
-    const startTime = new Date(`${now.toDateString()} ${mealSession.start_time}`);
+    const startTime = new Date(
+      `${now.toDateString()} ${mealSession.start_time}`
+    );
     const endTime = new Date(`${now.toDateString()} ${mealSession.end_time}`);
     if (now < startTime || now > endTime) {
       return res.status(400).json({
@@ -215,16 +234,22 @@ exports.editOrder = async (req, res) => {
     }
 
     // Get session items to map food_item_ids
-    const sessionItems = await menuServiceClient.getSessionItems(mealSession.id, authHeader);
-    const idToSessionItem = new Map(sessionItems.map((si) => [si.food_item_id, si]));
+    const sessionItems = await menuServiceClient.getSessionItems(
+      mealSession.id,
+      authHeader
+    );
+    const idToSessionItem = new Map(
+      sessionItems.map((si) => [si.food_item_id, si])
+    );
 
     // Calculate quantity changes per food_item_id
     const existingItemsByFoodId = new Map();
-    order.order_items.forEach(item => {
+    order.order_items.forEach((item) => {
       // Find the food_item_id for this order item (we need to match by name or store food_item_id)
-      const sessionItem = Array.from(idToSessionItem.values()).find(si => 
-        (si.foodItem && si.foodItem.name === item.food_name) || 
-        (si.food_item && si.food_item.name === item.food_name)
+      const sessionItem = Array.from(idToSessionItem.values()).find(
+        (si) =>
+          (si.foodItem && si.foodItem.name === item.food_name) ||
+          (si.food_item && si.food_item.name === item.food_name)
       );
       if (sessionItem) {
         existingItemsByFoodId.set(sessionItem.food_item_id, item.quantity);
@@ -232,19 +257,22 @@ exports.editOrder = async (req, res) => {
     });
 
     const newItemsByFoodId = new Map();
-    items.forEach(item => {
+    items.forEach((item) => {
       newItemsByFoodId.set(item.food_item_id, item.quantity);
     });
 
     // Calculate inventory adjustments
     const inventoryChanges = [];
-    const allFoodIds = new Set([...existingItemsByFoodId.keys(), ...newItemsByFoodId.keys()]);
-    
+    const allFoodIds = new Set([
+      ...existingItemsByFoodId.keys(),
+      ...newItemsByFoodId.keys(),
+    ]);
+
     for (const foodItemId of allFoodIds) {
       const oldQty = existingItemsByFoodId.get(foodItemId) || 0;
       const newQty = newItemsByFoodId.get(foodItemId) || 0;
       const delta = newQty - oldQty;
-      
+
       if (delta !== 0) {
         inventoryChanges.push({ food_item_id: foodItemId, delta });
       }
@@ -331,11 +359,11 @@ exports.editOrder = async (req, res) => {
           { transaction: t }
         );
       }
-        });
+    });
 
     // Broadcast inventory changes
     if (changedSessionItems.length > 0) {
-        await redisPublisher.publishOrderUpdate({
+      await redisPublisher.publishOrderUpdate({
         type: 'session_items.updated',
         sessionId: mealSession.id,
         items: changedSessionItems.map((row) => ({
@@ -350,10 +378,14 @@ exports.editOrder = async (req, res) => {
   } catch (error) {
     console.error('Error updating order:', error);
     if (error.message === 'INSUFFICIENT_QTY') {
-      return res.status(400).json({ message: 'Insufficient quantity for one or more items' });
+      return res
+        .status(400)
+        .json({ message: 'Insufficient quantity for one or more items' });
     }
     if (error.message === 'SESSION_ITEM_NOT_FOUND') {
-      return res.status(404).json({ message: 'One or more session items not found' });
+      return res
+        .status(404)
+        .json({ message: 'One or more session items not found' });
     }
     return res.status(500).json({ message: 'Server error' });
   }
@@ -380,7 +412,9 @@ exports.deleteOrder = async (req, res) => {
 
     // Verify order ownership
     if (order.customer_id !== req.user?.id) {
-      return res.status(403).json({ message: 'Unauthorized to delete this order' });
+      return res
+        .status(403)
+        .json({ message: 'Unauthorized to delete this order' });
     }
 
     const mealTime = order.meal_time;
@@ -391,13 +425,19 @@ exports.deleteOrder = async (req, res) => {
     // Get meal session from menu-service
     const today = new Date().toISOString().split('T')[0];
     const authHeader = req.headers['authorization'] || null;
-    const mealSession = await menuServiceClient.getMealSessionByTime(today, mealTime, authHeader);
+    const mealSession = await menuServiceClient.getMealSessionByTime(
+      today,
+      mealTime,
+      authHeader
+    );
     if (!mealSession) {
       return res.status(404).json({ message: 'Meal session not found' });
     }
 
     const now = new Date();
-    const startTime = new Date(`${now.toDateString()} ${mealSession.start_time}`);
+    const startTime = new Date(
+      `${now.toDateString()} ${mealSession.start_time}`
+    );
     const endTime = new Date(`${now.toDateString()} ${mealSession.end_time}`);
 
     if (now < startTime || now > endTime) {
@@ -407,21 +447,27 @@ exports.deleteOrder = async (req, res) => {
     }
 
     // Get session items to map food_item_ids
-    const sessionItems = await menuServiceClient.getSessionItems(mealSession.id, authHeader);
-    const idToSessionItem = new Map(sessionItems.map((si) => [si.food_item_id, si]));
+    const sessionItems = await menuServiceClient.getSessionItems(
+      mealSession.id,
+      authHeader
+    );
+    const idToSessionItem = new Map(
+      sessionItems.map((si) => [si.food_item_id, si])
+    );
 
     // Calculate inventory adjustments for each item being deleted
     const inventoryChanges = [];
     for (const orderItem of order.order_items) {
       // Find the food_item_id for this order item
-      const sessionItem = Array.from(idToSessionItem.values()).find(si => 
-        (si.foodItem && si.foodItem.name === orderItem.food_name) || 
-        (si.food_item && si.food_item.name === orderItem.food_name)
+      const sessionItem = Array.from(idToSessionItem.values()).find(
+        (si) =>
+          (si.foodItem && si.foodItem.name === orderItem.food_name) ||
+          (si.food_item && si.food_item.name === orderItem.food_name)
       );
       if (sessionItem) {
         inventoryChanges.push({
           food_item_id: sessionItem.food_item_id,
-          quantity: orderItem.quantity
+          quantity: orderItem.quantity,
         });
       }
     }
@@ -451,7 +497,7 @@ exports.deleteOrder = async (req, res) => {
 
     // Broadcast inventory changes
     if (changedSessionItems.length > 0) {
-    await redisPublisher.publishOrderUpdate({
+      await redisPublisher.publishOrderUpdate({
         type: 'session_items.updated',
         sessionId: mealSession.id,
         items: changedSessionItems.map((row) => ({
@@ -472,8 +518,6 @@ exports.deleteOrder = async (req, res) => {
 exports.getOrders = async (req, res) => {
   const {
     type,
-    meal_time,
-    date,
     status,
     meal_type,
     limit,
@@ -481,14 +525,15 @@ exports.getOrders = async (req, res) => {
     customer_id,
     area_id,
     payment_status,
+    date_range,
+    start_date,
+    end_date,
   } = req.query;
 
   try {
     // Log input parameters
     console.log('Received query parameters:', {
       type,
-      meal_time,
-      date,
       status,
       meal_type,
       limit,
@@ -498,31 +543,20 @@ exports.getOrders = async (req, res) => {
       user_id: req.user?.id,
     });
 
-    // Basic input validation
+    // Basic validation
     if (!type) {
-      console.log('Validation failed: type parameter is required');
       return res.status(400).json({ message: 'type parameter is required' });
-    }
-    if (type === 'current' && !meal_time) {
-      console.log('Validation failed: meal_time is required for type=current');
-      return res
-        .status(400)
-        .json({ message: 'meal_time is required for type=current' });
     }
 
     // Role-based access control
     const userRole = req.user?.role;
     const userId = req.user?.id;
-
-    // Build where clause based on user role
     const where = {};
 
     if (userRole === 'customer') {
-      // Customers can only see their own orders
       where.customer_id = userId;
       console.log('Customer access: filtering by customer_id =', userId);
     } else if (userRole === 'delivery_person') {
-      // Delivery persons must select an area from query
       if (!area_id) {
         return res.status(400).json({
           message:
@@ -532,92 +566,43 @@ exports.getOrders = async (req, res) => {
       where.area_id = parseInt(area_id);
       console.log('Delivery person access: filtering by area_id =', area_id);
     } else if (userRole === 'admin' || userRole === 'super_admin') {
-      // Admins can see all orders, but can filter by customer_id or area_id if provided
       if (customer_id) {
         where.customer_id = customer_id;
-        console.log('Admin access: filtering by customer_id =', customer_id);
       }
       if (area_id) {
         where.area_id = area_id;
-        console.log('Admin access: filtering by area_id =', area_id);
       }
-      console.log('Admin access: no restrictions applied');
+      console.log('Admin access: unrestricted with optional filters');
     } else {
-      return res.status(403).json({
-        message: 'Invalid user role or insufficient permissions',
-      });
+      return res
+        .status(403)
+        .json({ message: 'Invalid user role or insufficient permissions' });
     }
-
-    // Normalize meal_time to lowercase and validate against ENUM
-    const validMealTimes = ['breakfast', 'lunch', 'dinner'];
-    const normalizedMealTime = meal_time ? meal_time.toLowerCase() : null;
-    if (type === 'current' && !validMealTimes.includes(normalizedMealTime)) {
-      console.log('Validation failed: Invalid meal_time', {
-        meal_time,
-        normalizedMealTime,
-      });
-      return res.status(400).json({
-        message: 'Invalid meal_time, must be one of: breakfast, lunch, dinner',
-      });
-    }
-    console.log('Normalized meal_time:', normalizedMealTime);
 
     const include = [
       {
         model: Order_Item,
         as: 'order_items',
-        required: false, // Include orders even if they have no items
+        required: false,
       },
     ];
 
     // Handle filter types
     if (type === 'current') {
-      // Validate meal session existence via menu-service
-      const targetDate = date || new Date().toISOString().split('T')[0]; // Use current date in YYYY-MM-DD format
-      const authHeader = req.headers['authorization'] || null;
-      
-      console.log('Querying Meal_Session with:', {
-        meal_time: normalizedMealTime,
-        targetDate,
-      });
-      
-      const mealSession = await menuServiceClient.getMealSessionByTime(targetDate, normalizedMealTime, authHeader);
-      console.log(
-        'Meal_Session result:',
-        mealSession ? mealSession : null
-      );
-
-      if (!mealSession) {
-        console.log('No Meal_Session found for:', {
-          meal_time: normalizedMealTime,
-          targetDate,
-        });
-        return res.status(404).json({ message: 'Meal session not found' });
-      }
-
-      where.meal_time = normalizedMealTime;
-      // Fix the date filtering to properly compare dates using Sequelize date functions
-      where.created_at = {
-        [Op.gte]: sequelize.literal(`DATE('${targetDate}')`),
-        [Op.lte]: sequelize.literal(
-          `DATE('${targetDate}') + INTERVAL 1 DAY - INTERVAL 1 SECOND`
-        ),
-      };
-
-      console.log('Date filtering details:', {
-        targetDate,
-        whereCreatedAt: where.created_at,
-      });
+      // Current orders = orders that are not finished
+      where.status = { [Op.in]: ['pending', 'preparing', 'delivering'] };
+      console.log('Fetching current orders with status:', where.status);
     } else if (type === 'pending') {
       where.payment_status = 'pending';
+      console.log('Fetching pending orders (unpaid)');
     } else {
-      console.log('Validation failed: Invalid type parameter', { type });
       return res.status(400).json({ message: 'Invalid type parameter' });
     }
 
     // Optional filters
     if (status) {
-      where.status = status;
+      const statusArray = status.split(',');
+      where.status = { [Op.in]: statusArray };
       console.log('Applying status filter:', status);
     }
     if (payment_status) {
@@ -629,6 +614,11 @@ exports.getOrders = async (req, res) => {
       include[0].where.meal_type = meal_type;
       console.log('Applying meal_type filter:', meal_type);
     }
+    
+    const dateFilter = buildDateFilter(date_range, start_date, end_date);
+    if (dateFilter) {
+      where.created_at = dateFilter;
+    }
 
     // Pagination
     const queryLimit = parseInt(limit) || 10;
@@ -639,14 +629,10 @@ exports.getOrders = async (req, res) => {
       isNaN(queryOffset) ||
       queryOffset < 0
     ) {
-      console.log('Validation failed: Invalid limit or offset', {
-        limit,
-        offset,
-      });
       return res.status(400).json({ message: 'Invalid limit or offset' });
     }
 
-    // Log query details
+    // Query orders
     console.log('Querying orders with:', {
       where,
       include,
@@ -655,10 +641,6 @@ exports.getOrders = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
 
-    // Debug: Log the final where clause for troubleshooting
-    console.log('Final where clause:', where);
-
-    // Fetch orders
     const orders = await Order.findAll({
       where,
       include,
@@ -666,12 +648,6 @@ exports.getOrders = async (req, res) => {
       offset: queryOffset,
       order: [['created_at', 'DESC']],
     });
-
-    // Log fetched orders
-    console.log(
-      'Orders found:',
-      orders.map((order) => order.toJSON())
-    );
 
     return res.status(200).json({
       message: 'Orders retrieved successfully',
@@ -683,10 +659,6 @@ exports.getOrders = async (req, res) => {
     console.error('Error fetching orders:', {
       error: error.message,
       stack: error.stack,
-      customer_id,
-      type,
-      meal_time,
-      date,
     });
     return res.status(500).json({ message: 'Server error' });
   }
@@ -737,3 +709,56 @@ exports.updatePaymentStatus = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+function buildDateFilter(dateRange, startDate, endDate) {
+  const today = new Date();
+  let start, end;
+
+  switch (dateRange) {
+    case 'today':
+      start = new Date(today.setHours(0, 0, 0, 0));
+      end = new Date(today.setHours(23, 59, 59, 999));
+      break;
+
+    case 'this_week': {
+      const firstDay = today.getDate() - today.getDay(); // Sunday
+      start = new Date(today.setDate(firstDay));
+      start.setHours(0, 0, 0, 0);
+      end = new Date(today.setDate(firstDay + 6));
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
+
+    case 'last_week': {
+      const firstDay = today.getDate() - today.getDay() - 7;
+      start = new Date(today.setDate(firstDay));
+      start.setHours(0, 0, 0, 0);
+      end = new Date(today.setDate(firstDay + 6));
+      end.setHours(23, 59, 59, 999);
+      break;
+    }
+
+    case 'this_month':
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+      break;
+
+    case 'last_month':
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      end = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59);
+      break;
+
+    case 'custom':
+      if (!startDate || !endDate) return null;
+      start = new Date(startDate);
+      end = new Date(endDate);
+      break;
+
+    default:
+      return null; // no filter
+  }
+
+  return {
+    [Op.between]: [start, end],
+  };
+}
