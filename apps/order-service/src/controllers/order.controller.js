@@ -5,7 +5,7 @@ const { Op } = require('sequelize');
 const { Order, Order_Item, sequelize } = require('../models');
 
 exports.createOrder = async (req, res) => {
-  const { customer_id, items, meal_time } = req.body;
+  const { customer_id, items, meal_time, target_date } = req.body;
 
   try {
     if (
@@ -23,10 +23,10 @@ exports.createOrder = async (req, res) => {
     const unpaidOrders = await Order.count({
       where: {
         customer_id,
-        payment_status: 'pending', //if this way sucks, add another column to the user table to keep track of unpaid orders
+        payment_status: 'unpaid', //if this way sucks, add another column to the user table to keep track of unpaid orders
       },
     });
-    if (unpaidOrders > 2) {
+    if (unpaidOrders >= 2) {
       return res
         .status(400)
         .json({ message: 'You have more than two unpaid order' });
@@ -38,35 +38,23 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Customer area not found' });
     }
 
-    const today = new Date().toISOString().split('T')[0];
+    // Determine the target date for the order
+    const orderDate = target_date || new Date().toISOString().split('T')[0];
     const authHeader = req.headers['authorization'] || null;
     const mealSession = await menuServiceClient.getMealSessionByTime(
-      today,
-      meal_time,
+      orderDate,
+        meal_time,
       authHeader
     );
     if (!mealSession) {
       return res.status(400).json({ message: 'Meal session not found' });
     }
 
-    // Validate order time within session window
-    try {
-      const now = new Date();
-      const startTime = new Date(
-        `${now.toDateString()} ${mealSession.start_time}`
-      );
-      const endTime = new Date(`${now.toDateString()} ${mealSession.end_time}`);
-      if (now < startTime || now > endTime) {
-        return res.status(400).json({
-          message:
-            'Order cannot be placed outside the meal session time window',
-        });
-      }
-    } catch (e) {
-      console.error('Time window validation failed:', e.message);
-      return res
-        .status(500)
-        .json({ message: 'Failed to validate session time window' });
+    // Simple time validation: only check if target_date is not in the past
+    if (target_date && target_date < new Date().toISOString().split('T')[0]) {
+      return res.status(400).json({
+        message: 'Cannot place orders for past dates',
+      });
     }
 
     // Resolve session items via menu-service and decrement inventory there first
@@ -132,6 +120,7 @@ exports.createOrder = async (req, res) => {
           area_id: customerAreaId,
           total_price: computedTotal,
           meal_time,
+          target_date: orderDate,
         },
         { transaction: t }
       );
@@ -209,11 +198,11 @@ exports.editOrder = async (req, res) => {
         .json({ message: 'Unauthorized to edit this order' });
     }
 
-    // Get meal session from menu-service
-    const today = new Date().toISOString().split('T')[0];
+    // Get meal session from menu-service using the order's target_date
+    const orderDate = order.target_date || new Date().toISOString().split('T')[0];
     const authHeader = req.headers['authorization'] || null;
     const mealSession = await menuServiceClient.getMealSessionByTime(
-      today,
+      orderDate,
       order.meal_time,
       authHeader
     );
@@ -221,15 +210,10 @@ exports.editOrder = async (req, res) => {
       return res.status(404).json({ message: 'Meal session not found' });
     }
 
-    // Validate time window
-    const now = new Date();
-    const startTime = new Date(
-      `${now.toDateString()} ${mealSession.start_time}`
-    );
-    const endTime = new Date(`${now.toDateString()} ${mealSession.end_time}`);
-    if (now < startTime || now > endTime) {
+    // Simple validation: only allow editing if target_date is not in the past
+    if (order.target_date && order.target_date < new Date().toISOString().split('T')[0]) {
       return res.status(400).json({
-        message: 'Order cannot be edited outside the meal session time window',
+        message: 'Cannot edit orders for past dates',
       });
     }
 
@@ -359,11 +343,11 @@ exports.editOrder = async (req, res) => {
           { transaction: t }
         );
       }
-    });
+        });
 
     // Broadcast inventory changes
     if (changedSessionItems.length > 0) {
-      await redisPublisher.publishOrderUpdate({
+        await redisPublisher.publishOrderUpdate({
         type: 'session_items.updated',
         sessionId: mealSession.id,
         items: changedSessionItems.map((row) => ({
@@ -422,11 +406,11 @@ exports.deleteOrder = async (req, res) => {
       return res.status(400).json({ message: 'Meal time not found in order' });
     }
 
-    // Get meal session from menu-service
-    const today = new Date().toISOString().split('T')[0];
+    // Get meal session from menu-service using the order's target_date
+    const orderDate = order.target_date || new Date().toISOString().split('T')[0];
     const authHeader = req.headers['authorization'] || null;
     const mealSession = await menuServiceClient.getMealSessionByTime(
-      today,
+      orderDate,
       mealTime,
       authHeader
     );
@@ -434,16 +418,11 @@ exports.deleteOrder = async (req, res) => {
       return res.status(404).json({ message: 'Meal session not found' });
     }
 
-    const now = new Date();
-    const startTime = new Date(
-      `${now.toDateString()} ${mealSession.start_time}`
-    );
-    const endTime = new Date(`${now.toDateString()} ${mealSession.end_time}`);
-
-    if (now < startTime || now > endTime) {
-      return res
-        .status(403)
-        .json({ message: 'Order can only be deleted within session time' });
+    // Simple validation: only allow deletion if target_date is not in the past
+    if (order.target_date && order.target_date < new Date().toISOString().split('T')[0]) {
+      return res.status(400).json({
+        message: 'Cannot delete orders for past dates',
+      });
     }
 
     // Get session items to map food_item_ids
@@ -497,7 +476,7 @@ exports.deleteOrder = async (req, res) => {
 
     // Broadcast inventory changes
     if (changedSessionItems.length > 0) {
-      await redisPublisher.publishOrderUpdate({
+    await redisPublisher.publishOrderUpdate({
         type: 'session_items.updated',
         sessionId: mealSession.id,
         items: changedSessionItems.map((row) => ({

@@ -28,6 +28,11 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ENUM('breakfast', 'lunch', 'dinner'),
         allowNull: false,
       },
+      target_date: {
+        type: DataTypes.DATEONLY,
+        allowNull: true,
+        comment: 'Target date for the order (for pre-orders). If null, defaults to today.',
+      },
       total_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
       payment_status: {
         type: DataTypes.ENUM('pending', 'paid', 'unpaid'),
