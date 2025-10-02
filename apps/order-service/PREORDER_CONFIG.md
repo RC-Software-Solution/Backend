@@ -32,15 +32,21 @@ The create order endpoint now accepts an optional `target_date` field:
 }
 ```
 
-### Simple Rules
+### Enhanced Rules
 
 1. **Same-day orders** (no `target_date` or `target_date` = today):
    - Work exactly as before
+   - Must be within session time window
 
 2. **Future orders** (`target_date` > today):
-   - Can be placed anytime (no time window restrictions)
-   - Can be edited/deleted anytime (until the target date passes)
-   - Only restriction: cannot place orders for past dates
+   - Can be placed during the session time window (supports cross-day sessions)
+   - Can be edited/deleted during the session time window
+   - Cannot place orders for past dates
+
+3. **Cross-day sessions** (e.g., start_time: 20:00, end_time: 10:00):
+   - Session starts at 8 PM today and ends at 10 AM tomorrow
+   - Orders can be placed from 8 PM today until 10 AM tomorrow
+   - Automatically handles midnight crossover
 
 ### Frontend Integration
 
@@ -49,7 +55,29 @@ For fetching menu items for future dates:
 ```javascript
 // Fetch breakfast items for tomorrow
 const response = await fetch('/api/meal-session-items/by-session?meal_time=breakfast&date=2025-09-26');
+
+// Check if session is currently available for ordering
+const response = await fetch('/api/meal-session-items/by-session?meal_time=breakfast&date=2025-09-26&check_availability=true');
 ```
+
+### Cross-day Session Examples
+
+#### Admin Setup:
+```json
+{
+  "date": "2025-09-26",
+  "meal_time": "breakfast", 
+  "start_time": "20:00",
+  "end_time": "10:00"
+}
+```
+
+#### Customer Experience:
+- **8 PM today (Sept 25)**: Session becomes available, can place orders for tomorrow's breakfast
+- **11 PM today**: Still can place orders
+- **2 AM tomorrow (Sept 26)**: Still can place orders  
+- **9 AM tomorrow**: Still can place orders
+- **10:01 AM tomorrow**: Session ends, no more orders allowed
 
 ## Time Zone Handling
 

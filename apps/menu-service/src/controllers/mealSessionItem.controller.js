@@ -40,10 +40,36 @@ const createMealSessionItem = async (req, res) => {
   }
 };
 
+// Helper function to check if current time is within session window (handles cross-day sessions)
+const isSessionAvailable = (sessionDate, startTime, endTime) => {
+  const now = new Date();
+  const [year, month, day] = sessionDate.split('-').map(x => parseInt(x, 10));
+  
+  // Parse times
+  const [startHour, startMinute, startSecond] = startTime.split(':').map(x => parseInt(x, 10));
+  const [endHour, endMinute, endSecond] = endTime.split(':').map(x => parseInt(x, 10));
+  
+  // Create start time (always on session date)
+  const sessionStart = new Date(Date.UTC(year, month - 1, day, startHour, startMinute, startSecond || 0));
+  
+  // Create end time - if end time is smaller than start time, it's next day
+  let sessionEnd;
+  if (endHour < startHour || (endHour === startHour && endMinute < startMinute)) {
+    // Cross-day session: end time is next day
+    sessionEnd = new Date(Date.UTC(year, month - 1, day + 1, endHour, endMinute, endSecond || 0));
+  } else {
+    // Same-day session: end time is same day
+    sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
+  }
+  
+  const nowUtc = now.getTime();
+  return nowUtc >= sessionStart.getTime() && nowUtc <= sessionEnd.getTime();
+};
+
 // List items for a session by meal_time and date
 const listMealSessionItemsByTime = async (req, res) => {
   try {
-    const { meal_time, date } = req.query;
+    const { meal_time, date, check_availability } = req.query;
     
     if (!meal_time || !date) {
       return res.status(400).json({ 
@@ -73,6 +99,27 @@ const listMealSessionItemsByTime = async (req, res) => {
       });
     }
 
+    // Check if session is currently available (if requested)
+    let sessionAvailable = true;
+    if (check_availability === 'true') {
+      sessionAvailable = isSessionAvailable(date, mealSession.start_time, mealSession.end_time);
+      
+      if (!sessionAvailable) {
+        return res.status(400).json({
+          success: false,
+          message: 'Meal session is not currently available for ordering',
+          session: {
+            id: mealSession.id,
+            meal_time: mealSession.meal_time,
+            date: mealSession.date,
+            start_time: mealSession.start_time,
+            end_time: mealSession.end_time,
+            available: false
+          }
+        });
+      }
+    }
+
     // Get session items with food item details
     const items = await Meal_Session_Item.findAll({
       where: { meal_session_id: mealSession.id },
@@ -87,7 +134,8 @@ const listMealSessionItemsByTime = async (req, res) => {
         meal_time: mealSession.meal_time,
         date: mealSession.date,
         start_time: mealSession.start_time,
-        end_time: mealSession.end_time
+        end_time: mealSession.end_time,
+        available: sessionAvailable
       }
     });
   } catch (error) {

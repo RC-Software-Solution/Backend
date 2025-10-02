@@ -4,6 +4,32 @@ const { Op } = require('sequelize');
 
 const { Order, Order_Item, sequelize } = require('../models');
 
+// Helper function to check if ordering is allowed (handles cross-day sessions)
+const isOrderingAllowed = (sessionDate, startTime, endTime) => {
+  const now = new Date();
+  const [year, month, day] = sessionDate.split('-').map(x => parseInt(x, 10));
+  
+  // Parse times
+  const [startHour, startMinute, startSecond] = startTime.split(':').map(x => parseInt(x, 10));
+  const [endHour, endMinute, endSecond] = endTime.split(':').map(x => parseInt(x, 10));
+  
+  // Create start time (always on session date)
+  const sessionStart = new Date(Date.UTC(year, month - 1, day, startHour, startMinute, startSecond || 0));
+  
+  // Create end time - if end time is smaller than start time, it's next day
+  let sessionEnd;
+  if (endHour < startHour || (endHour === startHour && endMinute < startMinute)) {
+    // Cross-day session: end time is next day
+    sessionEnd = new Date(Date.UTC(year, month - 1, day + 1, endHour, endMinute, endSecond || 0));
+  } else {
+    // Same-day session: end time is same day
+    sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
+  }
+  
+  const nowUtc = now.getTime();
+  return nowUtc >= sessionStart.getTime() && nowUtc <= sessionEnd.getTime();
+};
+
 exports.createOrder = async (req, res) => {
   const { customer_id, items, meal_time, target_date } = req.body;
 
@@ -43,17 +69,24 @@ exports.createOrder = async (req, res) => {
     const authHeader = req.headers['authorization'] || null;
     const mealSession = await menuServiceClient.getMealSessionByTime(
       orderDate,
-        meal_time,
+      meal_time,
       authHeader
     );
     if (!mealSession) {
       return res.status(400).json({ message: 'Meal session not found' });
     }
 
-    // Simple time validation: only check if target_date is not in the past
+    // Enhanced time validation for cross-day sessions and future orders
     if (target_date && target_date < new Date().toISOString().split('T')[0]) {
       return res.status(400).json({
         message: 'Cannot place orders for past dates',
+      });
+    }
+
+    // Check if ordering is allowed based on session time window (handles cross-day sessions)
+    if (!isOrderingAllowed(orderDate, mealSession.start_time, mealSession.end_time)) {
+      return res.status(400).json({
+        message: 'Order cannot be placed outside the meal session time window',
       });
     }
 
@@ -168,7 +201,7 @@ exports.createOrder = async (req, res) => {
         message: 'One or more session items not found for this session',
       });
     }
-    return res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 
@@ -210,10 +243,17 @@ exports.editOrder = async (req, res) => {
       return res.status(404).json({ message: 'Meal session not found' });
     }
 
-    // Simple validation: only allow editing if target_date is not in the past
+    // Enhanced validation for cross-day sessions and future orders
     if (order.target_date && order.target_date < new Date().toISOString().split('T')[0]) {
       return res.status(400).json({
         message: 'Cannot edit orders for past dates',
+      });
+    }
+
+    // Check if editing is allowed based on session time window (handles cross-day sessions)
+    if (!isOrderingAllowed(orderDate, mealSession.start_time, mealSession.end_time)) {
+      return res.status(400).json({
+        message: 'Order cannot be edited outside the meal session time window',
       });
     }
 
@@ -418,10 +458,17 @@ exports.deleteOrder = async (req, res) => {
       return res.status(404).json({ message: 'Meal session not found' });
     }
 
-    // Simple validation: only allow deletion if target_date is not in the past
+    // Enhanced validation for cross-day sessions and future orders
     if (order.target_date && order.target_date < new Date().toISOString().split('T')[0]) {
       return res.status(400).json({
         message: 'Cannot delete orders for past dates',
+      });
+    }
+
+    // Check if deletion is allowed based on session time window (handles cross-day sessions)
+    if (!isOrderingAllowed(orderDate, mealSession.start_time, mealSession.end_time)) {
+      return res.status(400).json({
+        message: 'Order cannot be deleted outside the meal session time window',
       });
     }
 

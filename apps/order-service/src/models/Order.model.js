@@ -18,6 +18,7 @@ module.exports = (sequelize, DataTypes) => {
           'pending',
           'preparing',
           'delivering',
+          'delivered',
           'completed',
           'cancelled'
         ),
@@ -35,7 +36,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       total_price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
       payment_status: {
-        type: DataTypes.ENUM('pending', 'paid', 'unpaid'),
+        type: DataTypes.ENUM('pending', 'paid', 'unpaid', 'ignored'),
         defaultValue: 'pending',
         allowNull: false,
       },

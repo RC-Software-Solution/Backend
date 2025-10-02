@@ -96,10 +96,10 @@ CREATE TABLE `meal_session_items` (
 CREATE TABLE `orders` (
   `id` varchar(255) NOT NULL,
   `customer_id` varchar(255) NOT NULL,
-  `status` enum('pending','preparing','delivering','completed','cancelled') NOT NULL DEFAULT 'pending',
-  `meal_time` enum('breakfast','lunch','dinner','') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `status` enum('pending','preparing','delivering','delivered','completed','cancelled') NOT NULL DEFAULT 'pending',
+  `meal_time` enum('breakfast','lunch','dinner') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
   `total_price` decimal(10,2) NOT NULL,
-  `payment_status` enum('pending','paid','unpaid') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'pending',
+  `payment_status` enum('pending','paid','unpaid','ignored') CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT 'pending',
   `area_id` bigint DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
