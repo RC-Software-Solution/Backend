@@ -90,6 +90,28 @@ exports.createOrder = async (req, res) => {
       });
     }
 
+    // Additional check: prevent orders for past sessions (even if it's today but session has ended)
+    const today = new Date().toISOString().split('T')[0];
+    if (orderDate === today) {
+      // For today's orders, check if the session has already ended
+      const now = new Date();
+      const [year, month, day] = orderDate.split('-').map(x => parseInt(x, 10));
+      const [endHour, endMinute, endSecond] = mealSession.end_time.split(':').map(x => parseInt(x, 10));
+      
+      // Create end time for today
+      const sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
+      
+      // If it's a cross-day session, end time is tomorrow, so we don't need this check
+      const [startHour, startMinute] = mealSession.start_time.split(':').map(x => parseInt(x, 10));
+      const isCrossDay = endHour < startHour || (endHour === startHour && endMinute < startMinute);
+      
+      if (!isCrossDay && now.getTime() > sessionEnd.getTime()) {
+        return res.status(400).json({
+          message: 'This meal session has already ended and is no longer available for ordering',
+        });
+      }
+    }
+
     // Resolve session items via menu-service and decrement inventory there first
     const sessionItems = await menuServiceClient.getSessionItems(
       mealSession.id,
@@ -255,6 +277,28 @@ exports.editOrder = async (req, res) => {
       return res.status(400).json({
         message: 'Order cannot be edited outside the meal session time window',
       });
+    }
+
+    // Additional check: prevent editing orders for past sessions (even if it's today but session has ended)
+    const today = new Date().toISOString().split('T')[0];
+    if (orderDate === today) {
+      // For today's orders, check if the session has already ended
+      const now = new Date();
+      const [year, month, day] = orderDate.split('-').map(x => parseInt(x, 10));
+      const [endHour, endMinute, endSecond] = mealSession.end_time.split(':').map(x => parseInt(x, 10));
+      
+      // Create end time for today
+      const sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
+      
+      // If it's a cross-day session, end time is tomorrow, so we don't need this check
+      const [startHour, startMinute] = mealSession.start_time.split(':').map(x => parseInt(x, 10));
+      const isCrossDay = endHour < startHour || (endHour === startHour && endMinute < startMinute);
+      
+      if (!isCrossDay && now.getTime() > sessionEnd.getTime()) {
+        return res.status(400).json({
+          message: 'This meal session has already ended and orders can no longer be edited',
+        });
+      }
     }
 
     // Get session items to map food_item_ids
@@ -470,6 +514,28 @@ exports.deleteOrder = async (req, res) => {
       return res.status(400).json({
         message: 'Order cannot be deleted outside the meal session time window',
       });
+    }
+
+    // Additional check: prevent deleting orders for past sessions (even if it's today but session has ended)
+    const today = new Date().toISOString().split('T')[0];
+    if (orderDate === today) {
+      // For today's orders, check if the session has already ended
+      const now = new Date();
+      const [year, month, day] = orderDate.split('-').map(x => parseInt(x, 10));
+      const [endHour, endMinute, endSecond] = mealSession.end_time.split(':').map(x => parseInt(x, 10));
+      
+      // Create end time for today
+      const sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
+      
+      // If it's a cross-day session, end time is tomorrow, so we don't need this check
+      const [startHour, startMinute] = mealSession.start_time.split(':').map(x => parseInt(x, 10));
+      const isCrossDay = endHour < startHour || (endHour === startHour && endMinute < startMinute);
+      
+      if (!isCrossDay && now.getTime() > sessionEnd.getTime()) {
+        return res.status(400).json({
+          message: 'This meal session has already ended and orders can no longer be deleted',
+        });
+      }
     }
 
     // Get session items to map food_item_ids

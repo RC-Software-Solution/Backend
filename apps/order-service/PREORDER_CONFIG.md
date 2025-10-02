@@ -35,18 +35,24 @@ The create order endpoint now accepts an optional `target_date` field:
 ### Enhanced Rules
 
 1. **Same-day orders** (no `target_date` or `target_date` = today):
-   - Work exactly as before
    - Must be within session time window
+   - ❌ **Cannot place orders for past sessions** (e.g., ordering breakfast at 2 PM)
+   - ✅ Can place orders for current/future sessions
 
 2. **Future orders** (`target_date` > today):
    - Can be placed during the session time window (supports cross-day sessions)
    - Can be edited/deleted during the session time window
-   - Cannot place orders for past dates
+   - ❌ **Cannot place orders for past dates**
 
 3. **Cross-day sessions** (e.g., start_time: 20:00, end_time: 10:00):
    - Session starts at 8 PM today and ends at 10 AM tomorrow
    - Orders can be placed from 8 PM today until 10 AM tomorrow
    - Automatically handles midnight crossover
+
+4. **Past session prevention**:
+   - ❌ Cannot order yesterday's breakfast today
+   - ❌ Cannot order today's breakfast at 2 PM (if breakfast ended at 10 AM)
+   - ✅ Can order tomorrow's breakfast at 8 PM today (if cross-day session is set)
 
 ### Frontend Integration
 
