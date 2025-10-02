@@ -681,14 +681,21 @@ exports.getOrders = async (req, res) => {
 
     // Handle filter types
     if (type === 'current') {
-      // Current orders = orders that are not finished
+      // Current orders = orders that are not finished (pending, preparing, delivering)
       where.status = { [Op.in]: ['pending', 'preparing', 'delivering'] };
       console.log('Fetching current orders with status:', where.status);
     } else if (type === 'pending') {
-      where.payment_status = 'pending';
-      console.log('Fetching pending orders (unpaid)');
+      // Pending orders = delivered but unpaid orders (awaiting payment)
+      where.status = 'delivered';
+      where.payment_status = { [Op.in]: ['pending', 'unpaid'] };
+      console.log('Fetching pending payment orders (delivered but unpaid)');
+    } else if (type === 'completed') {
+      // Completed orders = fully finished orders (paid and completed)
+      where.status = 'completed';
+      where.payment_status = 'paid';
+      console.log('Fetching completed orders (paid and finished)');
     } else {
-      return res.status(400).json({ message: 'Invalid type parameter' });
+      return res.status(400).json({ message: 'Invalid type parameter. Use: current, pending, or completed' });
     }
 
     // Optional filters
