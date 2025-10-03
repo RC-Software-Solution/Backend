@@ -1,5 +1,6 @@
 const redisPublisher = require('../services/redisPublisher');
 const menuServiceClient = require('../services/menuServiceClient');
+const userServiceClient = require('../services/userServiceClient');
 const { Op } = require('sequelize');
 
 const { Order, Order_Item, sequelize } = require('../models');
@@ -747,6 +748,36 @@ exports.getOrders = async (req, res) => {
       offset: queryOffset,
       order: [['created_at', 'DESC']],
     });
+
+    // Enrich orders with customer address for delivery persons
+    if (userRole === 'delivery_person' && orders && orders.length > 0) {
+      try {
+        const uniqueCustomerIds = Array.from(
+          new Set(orders.map((o) => o.customer_id).filter(Boolean))
+        );
+        const profiles = await Promise.all(
+          uniqueCustomerIds.map(async (id) => {
+            try {
+              const profile = await userServiceClient.getUserById(id);
+              return [id, profile];
+            } catch {
+              return [id, null];
+            }
+          })
+        );
+        const idToProfile = new Map(profiles);
+        orders.forEach((order) => {
+          const profile = idToProfile.get(order.customer_id);
+          if (profile) {
+            order.dataValues.customer_name = profile.full_name || null;
+            order.dataValues.customer_address = profile.address || null;
+            order.dataValues.customer_phone = profile.phone || null;
+          }
+        });
+      } catch (e) {
+        console.error('Failed to enrich orders with customer profiles:', e.message);
+      }
+    }
 
     return res.status(200).json({
       message: 'Orders retrieved successfully',

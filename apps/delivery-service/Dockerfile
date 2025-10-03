@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Make port 4001 available to the world outside this container
-EXPOSE 4001
+EXPOSE 4005
 
 # Define the command to run your app using node
 CMD ["node", "index.js"]
