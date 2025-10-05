@@ -1,5 +1,6 @@
 const { Meal_Session_Item, Meal_Session, Food_Item } = require('../models');
 const { emitInventoryUpdate } = require('../ws/emitter');
+const { DateTime } = require('luxon');
 
 // Create or upsert a meal session item
 const createMealSessionItem = async (req, res) => {
@@ -42,30 +43,67 @@ const createMealSessionItem = async (req, res) => {
 
 // Helper function to check if current time is within session window (handles cross-day sessions)
 const isSessionAvailable = (sessionDate, startTime, endTime) => {
-  const now = new Date();
-  const [year, month, day] = sessionDate.split('-').map(x => parseInt(x, 10));
+  const now = DateTime.now().setZone('Asia/Colombo');
   
-  // Parse times
-  const [startHour, startMinute, startSecond] = startTime.split(':').map(x => parseInt(x, 10));
-  const [endHour, endMinute, endSecond] = endTime.split(':').map(x => parseInt(x, 10));
+  console.log('\n========================================');
+  console.log('SESSION AVAILABILITY CHECK');
+  console.log('========================================');
+  console.log('Input Parameters:');
+  console.log('  sessionDate (meal date):', sessionDate);
+  console.log('  startTime:', startTime);
+  console.log('  endTime:', endTime);
+  console.log('');
   
-  // Create start time (always on session date)
-  const sessionStart = new Date(Date.UTC(year, month - 1, day, startHour, startMinute, startSecond || 0));
+  // Parse end time on the session date
+  const sessionEnd = DateTime.fromISO(`${sessionDate}T${endTime}`, { zone: 'Asia/Colombo' });
   
-  // Create end time - if end time is smaller than start time, it's next day
-  let sessionEnd;
-  if (endHour < startHour || (endHour === startHour && endMinute < startMinute)) {
-    // Cross-day session: end time is next day
-    sessionEnd = new Date(Date.UTC(year, month - 1, day + 1, endHour, endMinute, endSecond || 0));
+  let sessionStart;
+  // If end_time < start_time, it's a cross-day session
+  // Ordering starts the PREVIOUS day
+  if (endTime < startTime) {
+    console.log('⚠️  Cross-day ordering window detected');
+    const prevDate = DateTime.fromISO(sessionDate, { zone: 'Asia/Colombo' })
+      .minus({ days: 1 })
+      .toISODate();
+    sessionStart = DateTime.fromISO(`${prevDate}T${startTime}`, { zone: 'Asia/Colombo' });
+    console.log('  Ordering starts previous day:', prevDate);
   } else {
-    // Same-day session: end time is same day
-    sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
+    sessionStart = DateTime.fromISO(`${sessionDate}T${startTime}`, { zone: 'Asia/Colombo' });
   }
   
-  const nowUtc = now.getTime();
-  return nowUtc >= sessionStart.getTime() && nowUtc <= sessionEnd.getTime();
+  console.log('Current & Session Times (Sri Lankan):');
+  console.log('  Current Time:', now.toFormat('yyyy-MM-dd HH:mm:ss'));
+  console.log('  Ordering Opens:', sessionStart.toFormat('yyyy-MM-dd HH:mm:ss'));
+  console.log('  Ordering Closes:', sessionEnd.toFormat('yyyy-MM-dd HH:mm:ss'));
+  console.log('');
+  
+  const isAfterStart = now >= sessionStart;
+  const isBeforeEnd = now <= sessionEnd;
+  const isAvailable = isAfterStart && isBeforeEnd;
+  
+  console.log('Comparison Results:');
+  console.log('  Now >= Start?', isAfterStart);
+  console.log('  Now <= End?', isBeforeEnd);
+  console.log('  Is Available?', isAvailable);
+  
+  if (!isAvailable) {
+    console.log('\n❌ Session NOT Available');
+    if (!isAfterStart) {
+      const diff = sessionStart.diff(now, ['hours', 'minutes']).toObject();
+      console.log(`  Ordering opens in: ${Math.floor(diff.hours)}h ${Math.floor(diff.minutes)}m`);
+    }
+    if (!isBeforeEnd && isAfterStart) {
+      const diff = now.diff(sessionEnd, ['hours', 'minutes']).toObject();
+      console.log(`  Ordering closed: ${Math.floor(diff.hours)}h ${Math.floor(diff.minutes)}m ago`);
+    }
+  } else {
+    console.log('\n✅ Session IS Available for Ordering');
+  }
+  
+  console.log('========================================\n');
+  
+  return isAvailable;
 };
-
 // List items for a session by meal_time and date
 const listMealSessionItemsByTime = async (req, res) => {
   try {

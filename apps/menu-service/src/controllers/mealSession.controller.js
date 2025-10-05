@@ -1,4 +1,5 @@
 const { Meal_Session, Food_Item, Meal_Session_Item } = require('../models');
+const { DateTime } = require('luxon');
 
 /**
  * Create a new meal session
@@ -9,7 +10,6 @@ const createMealSession = async (req, res) => {
   try {
     const { date, meal_time, start_time, end_time } = req.body;
 
-    // Validate required fields
     if (!date || !meal_time || !start_time || !end_time) {
       return res.status(400).json({
         success: false,
@@ -17,7 +17,6 @@ const createMealSession = async (req, res) => {
       });
     }
 
-    // Validate meal_time
     const validMealTimes = ['breakfast', 'lunch', 'dinner'];
     if (!validMealTimes.includes(meal_time)) {
       return res.status(400).json({
@@ -26,17 +25,33 @@ const createMealSession = async (req, res) => {
       });
     }
 
-    // Validate time format
-    const startTime = new Date(`2000-01-01T${start_time}`);
-    const endTime = new Date(`2000-01-01T${end_time}`);
-    
-    if (startTime >= endTime) {
+    // Validate time format using Luxon
+    const startDateTime = DateTime.fromISO(`${date}T${start_time}`, { zone: 'Asia/Colombo' });
+    const endDateTime = DateTime.fromISO(`${date}T${end_time}`, { zone: 'Asia/Colombo' });
+
+    if (!startDateTime.isValid) {
       return res.status(400).json({
         success: false,
-        message: 'start_time must be before end_time'
+        message: `Invalid start_time format: ${start_time}`
       });
     }
 
+    if (!endDateTime.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid end_time format: ${end_time}`
+      });
+    }
+
+    // Allow cross-day sessions, just check they're not identical
+    if (startDateTime.equals(endDateTime)) {
+      return res.status(400).json({
+        success: false,
+        message: 'start_time and end_time cannot be the same'
+      });
+    }
+
+    // Store times as-is (Sri Lankan local time)
     const mealSession = await Meal_Session.create({
       date,
       meal_time,
@@ -52,7 +67,6 @@ const createMealSession = async (req, res) => {
   } catch (error) {
     console.error('Error creating meal session:', error);
     
-    // Handle unique constraint violation
     if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({
         success: false,
@@ -204,7 +218,6 @@ const updateMealSession = async (req, res) => {
       });
     }
 
-    // Validate meal_time if provided
     if (meal_time) {
       const validMealTimes = ['breakfast', 'lunch', 'dinner'];
       if (!validMealTimes.includes(meal_time)) {
@@ -215,25 +228,39 @@ const updateMealSession = async (req, res) => {
       }
     }
 
-    // Validate time format if both times are provided
-    if (start_time && end_time) {
-      const startTime = new Date(`2000-01-01T${start_time}`);
-      const endTime = new Date(`2000-01-01T${end_time}`);
-      
-      if (startTime >= endTime) {
-        return res.status(400).json({
-          success: false,
-          message: 'start_time must be before end_time'
-        });
-      }
-    }
-
-    // Update only provided fields
     const updateData = {};
     if (date !== undefined) updateData.date = date;
     if (meal_time !== undefined) updateData.meal_time = meal_time;
-    if (start_time !== undefined) updateData.start_time = start_time;
-    if (end_time !== undefined) updateData.end_time = end_time;
+
+    // Validate times if both are provided
+    if (start_time && end_time) {
+      const updateDate = date || mealSession.date;
+      const startDateTime = DateTime.fromISO(`${updateDate}T${start_time}`, { zone: 'Asia/Colombo' });
+      const endDateTime = DateTime.fromISO(`${updateDate}T${end_time}`, { zone: 'Asia/Colombo' });
+
+      if (!startDateTime.isValid || !endDateTime.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid time format'
+        });
+      }
+
+      if (startDateTime.equals(endDateTime)) {
+        return res.status(400).json({
+          success: false,
+          message: 'start_time and end_time cannot be the same'
+        });
+      }
+
+      // Store as-is (Sri Lankan local time)
+      updateData.start_time = start_time;
+      updateData.end_time = end_time;
+    } else if (start_time || end_time) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both start_time and end_time must be provided together'
+      });
+    }
 
     await mealSession.update(updateData);
 
@@ -245,7 +272,6 @@ const updateMealSession = async (req, res) => {
   } catch (error) {
     console.error('Error updating meal session:', error);
     
-    // Handle unique constraint violation
     if (error.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({
         success: false,

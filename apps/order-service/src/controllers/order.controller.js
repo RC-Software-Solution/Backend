@@ -2,33 +2,30 @@ const redisPublisher = require('../services/redisPublisher');
 const menuServiceClient = require('../services/menuServiceClient');
 const userServiceClient = require('../services/userServiceClient');
 const { Op } = require('sequelize');
-
+const { DateTime } = require('luxon');
 const { Order, Order_Item, sequelize } = require('../models');
 
 // Helper function to check if ordering is allowed (handles cross-day sessions)
 const isOrderingAllowed = (sessionDate, startTime, endTime) => {
-  const now = new Date();
-  const [year, month, day] = sessionDate.split('-').map(x => parseInt(x, 10));
+  // Get current time in Sri Lanka timezone
+  const now = DateTime.now().setZone('Asia/Colombo');
   
-  // Parse times
-  const [startHour, startMinute, startSecond] = startTime.split(':').map(x => parseInt(x, 10));
-  const [endHour, endMinute, endSecond] = endTime.split(':').map(x => parseInt(x, 10));
+  // Parse end time on the session date
+  const sessionEnd = DateTime.fromISO(`${sessionDate}T${endTime}`, { zone: 'Asia/Colombo' });
   
-  // Create start time (always on session date)
-  const sessionStart = new Date(Date.UTC(year, month - 1, day, startHour, startMinute, startSecond || 0));
-  
-  // Create end time - if end time is smaller than start time, it's next day
-  let sessionEnd;
-  if (endHour < startHour || (endHour === startHour && endMinute < startMinute)) {
-    // Cross-day session: end time is next day
-    sessionEnd = new Date(Date.UTC(year, month - 1, day + 1, endHour, endMinute, endSecond || 0));
+  let sessionStart;
+  // If end_time < start_time, it's a cross-day session
+  // Ordering starts the PREVIOUS day
+  if (endTime < startTime) {
+    const prevDate = DateTime.fromISO(sessionDate, { zone: 'Asia/Colombo' })
+      .minus({ days: 1 })
+      .toISODate();
+    sessionStart = DateTime.fromISO(`${prevDate}T${startTime}`, { zone: 'Asia/Colombo' });
   } else {
-    // Same-day session: end time is same day
-    sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
+    sessionStart = DateTime.fromISO(`${sessionDate}T${startTime}`, { zone: 'Asia/Colombo' });
   }
   
-  const nowUtc = now.getTime();
-  return nowUtc >= sessionStart.getTime() && nowUtc <= sessionEnd.getTime();
+  return now >= sessionStart && now <= sessionEnd;
 };
 
 exports.createOrder = async (req, res) => {
@@ -89,28 +86,6 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({
         message: 'Order cannot be placed outside the meal session time window',
       });
-    }
-
-    // Additional check: prevent orders for past sessions (even if it's today but session has ended)
-    const today = new Date().toISOString().split('T')[0];
-    if (orderDate === today) {
-      // For today's orders, check if the session has already ended
-      const now = new Date();
-      const [year, month, day] = orderDate.split('-').map(x => parseInt(x, 10));
-      const [endHour, endMinute, endSecond] = mealSession.end_time.split(':').map(x => parseInt(x, 10));
-      
-      // Create end time for today
-      const sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
-      
-      // If it's a cross-day session, end time is tomorrow, so we don't need this check
-      const [startHour, startMinute] = mealSession.start_time.split(':').map(x => parseInt(x, 10));
-      const isCrossDay = endHour < startHour || (endHour === startHour && endMinute < startMinute);
-      
-      if (!isCrossDay && now.getTime() > sessionEnd.getTime()) {
-        return res.status(400).json({
-          message: 'This meal session has already ended and is no longer available for ordering',
-        });
-      }
     }
 
     // Resolve session items via menu-service and decrement inventory there first
@@ -278,28 +253,6 @@ exports.editOrder = async (req, res) => {
       return res.status(400).json({
         message: 'Order cannot be edited outside the meal session time window',
       });
-    }
-
-    // Additional check: prevent editing orders for past sessions (even if it's today but session has ended)
-    const today = new Date().toISOString().split('T')[0];
-    if (orderDate === today) {
-      // For today's orders, check if the session has already ended
-      const now = new Date();
-      const [year, month, day] = orderDate.split('-').map(x => parseInt(x, 10));
-      const [endHour, endMinute, endSecond] = mealSession.end_time.split(':').map(x => parseInt(x, 10));
-      
-      // Create end time for today
-      const sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
-      
-      // If it's a cross-day session, end time is tomorrow, so we don't need this check
-      const [startHour, startMinute] = mealSession.start_time.split(':').map(x => parseInt(x, 10));
-      const isCrossDay = endHour < startHour || (endHour === startHour && endMinute < startMinute);
-      
-      if (!isCrossDay && now.getTime() > sessionEnd.getTime()) {
-        return res.status(400).json({
-          message: 'This meal session has already ended and orders can no longer be edited',
-        });
-      }
     }
 
     // Get session items to map food_item_ids
@@ -515,28 +468,6 @@ exports.deleteOrder = async (req, res) => {
       return res.status(400).json({
         message: 'Order cannot be deleted outside the meal session time window',
       });
-    }
-
-    // Additional check: prevent deleting orders for past sessions (even if it's today but session has ended)
-    const today = new Date().toISOString().split('T')[0];
-    if (orderDate === today) {
-      // For today's orders, check if the session has already ended
-      const now = new Date();
-      const [year, month, day] = orderDate.split('-').map(x => parseInt(x, 10));
-      const [endHour, endMinute, endSecond] = mealSession.end_time.split(':').map(x => parseInt(x, 10));
-      
-      // Create end time for today
-      const sessionEnd = new Date(Date.UTC(year, month - 1, day, endHour, endMinute, endSecond || 0));
-      
-      // If it's a cross-day session, end time is tomorrow, so we don't need this check
-      const [startHour, startMinute] = mealSession.start_time.split(':').map(x => parseInt(x, 10));
-      const isCrossDay = endHour < startHour || (endHour === startHour && endMinute < startMinute);
-      
-      if (!isCrossDay && now.getTime() > sessionEnd.getTime()) {
-        return res.status(400).json({
-          message: 'This meal session has already ended and orders can no longer be deleted',
-        });
-      }
     }
 
     // Get session items to map food_item_ids
