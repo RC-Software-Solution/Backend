@@ -598,7 +598,7 @@ exports.getOrders = async (req, res) => {
     } else if (type === 'pending') {
       // Pending orders = delivered but unpaid orders (awaiting payment)
       where.status = 'delivered';
-      where.payment_status = { [Op.in]: ['pending', 'unpaid'] };
+      where.payment_status = { [Op.in]: ['unpaid'] };
       console.log('Fetching pending payment orders (delivered but unpaid)');
     } else if (type === 'completed') {
       // Completed orders = fully finished orders (paid and completed)
