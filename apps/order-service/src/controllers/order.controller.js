@@ -74,13 +74,6 @@ exports.createOrder = async (req, res) => {
       return res.status(400).json({ message: 'Meal session not found' });
     }
 
-    // Enhanced time validation for cross-day sessions and future orders
-    if (target_date && target_date < new Date().toISOString().split('T')[0]) {
-      return res.status(400).json({
-        message: 'Cannot place orders for past dates',
-      });
-    }
-
     // Check if ordering is allowed based on session time window (handles cross-day sessions)
     if (!isOrderingAllowed(orderDate, mealSession.start_time, mealSession.end_time)) {
       return res.status(400).json({
@@ -239,13 +232,6 @@ exports.editOrder = async (req, res) => {
     );
     if (!mealSession) {
       return res.status(404).json({ message: 'Meal session not found' });
-    }
-
-    // Enhanced validation for cross-day sessions and future orders
-    if (order.target_date && order.target_date < new Date().toISOString().split('T')[0]) {
-      return res.status(400).json({
-        message: 'Cannot edit orders for past dates',
-      });
     }
 
     // Check if editing is allowed based on session time window (handles cross-day sessions)
@@ -454,13 +440,6 @@ exports.deleteOrder = async (req, res) => {
     );
     if (!mealSession) {
       return res.status(404).json({ message: 'Meal session not found' });
-    }
-
-    // Enhanced validation for cross-day sessions and future orders
-    if (order.target_date && order.target_date < new Date().toISOString().split('T')[0]) {
-      return res.status(400).json({
-        message: 'Cannot delete orders for past dates',
-      });
     }
 
     // Check if deletion is allowed based on session time window (handles cross-day sessions)
