@@ -1,8 +1,8 @@
 const User = require('../models/User');
 const { sendPushNotification } = require('../services/notificationService');
 const { sendEmail } = require('../services/emailService');
-const { generateAccessToken, generateRefreshToken, verifyToken } = require('../utils/jwt');
-const { hashPassword, comparePassword } = require('../utils/password');
+const { verifyToken } = require('../utils/jwt');
+const { hashPassword } = require('../utils/password');
 
 exports.signup = async (req, res) => {
   try {
@@ -75,63 +75,6 @@ exports.signup = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
-  }
-};
-
-exports.login = async (req, res) => {
-  try {
-    const { email, password, fcm_token } = req.body;
-    const user = await User.findOne({ where: { email } });
-
-    if (!user || !(await comparePassword(password, user.password))) {
-      return res.status(404).json({ message: 'Invalid credentials' });
-    }
-
-    if (user.status === 'deleted') {
-      return res.status(403).json({
-        message:
-          'Your account has been deleted. Please re-register using your email',
-      });
-    }
-
-    if (!user.approved) {
-      return res.status(403).json({
-        message:
-          'Your account is pending approval. Please wait for an admin to approve your account.',
-      });
-    }
-
-    if (fcm_token) {
-      user.fcm_token = fcm_token;
-      await user.save();
-    }
-
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
-
-    // Store refresh token in database
-    user.refresh_token = refreshToken;
-    await user.save();
-
-    res.json({
-      message: 'login successful',
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      user: {
-        id: user.id,
-        full_name: user.full_name,
-        email: user.email,
-        role: user.role,
-        address: user.address,
-        area_id: user.area_id,
-        phone: user.phone,
-        approved: user.approved,
-        fcm_token: user.fcm_token,
-      },
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-    console.log(error);
   }
 };
 

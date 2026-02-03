@@ -44,7 +44,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: rc
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
 
@@ -66,6 +66,7 @@ services:
     command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
     depends_on:
       - db
+      - redis
     environment:
       - RABBITMQ_URL=amqp://rabbitmq
       - DB_HOST=db
@@ -75,6 +76,12 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - JWT_PRIVATE_KEY_PATH=/app/secrets/private.pem
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - EMAIL_USER=buddhigayanmaleesha2000@gmail.com
+      - EMAIL_PASSWORD="foezuonvnzjxdbjp"
+      - FRONTEND_URL=http://localhost:3000
     ports:
       - "4001:4001"
     volumes:

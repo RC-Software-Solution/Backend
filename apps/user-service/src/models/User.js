@@ -15,6 +15,8 @@ const User = sequelize.define("User", {
     approved: { type: DataTypes.BOOLEAN, defaultValue: 0},
     fcm_token: { type: DataTypes.STRING},
     refresh_token: { type: DataTypes.TEXT},
+    password_reset_token: { type: DataTypes.STRING},
+    password_reset_expires: { type: DataTypes.DATE},
     status: { type: DataTypes.ENUM("active", "inactive", "deleted"), defaultValue: "active"},
     deleted_at: { type: DataTypes.DATE }
 }, {

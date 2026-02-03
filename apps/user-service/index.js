@@ -4,6 +4,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const userRoutes = require("./src/routes/user.routes");
+const authRoutes = require("./src/routes/auth.routes");
 
 const app = express();
 
@@ -13,6 +14,10 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 
+// Authentication routes (login, forgot-password, reset-password)
+app.use("/api/users", authRoutes);
+
+// User management routes (signup, profile, etc.)
 app.use("/api/users", userRoutes);
 
 
