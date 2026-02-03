@@ -3,6 +3,7 @@ const {
   getSalesTotals,
   getOrdersMetrics,
   getUnpaidOrdersCount,
+  getOrdersByCustomerId,
   getTopSellingItems,
   getSessionPerformance,
   getAreaMetrics,
@@ -15,6 +16,7 @@ router.use(internalAuthMiddleware);
 router.get('/sales-totals', getSalesTotals);
 router.get('/orders-metrics', getOrdersMetrics);
 router.get('/unpaid-orders-count', getUnpaidOrdersCount);
+router.get('/orders-by-customer', getOrdersByCustomerId);
 router.get('/top-selling-items', getTopSellingItems);
 router.get('/session-performance', getSessionPerformance);
 router.get('/area-metrics', getAreaMetrics);

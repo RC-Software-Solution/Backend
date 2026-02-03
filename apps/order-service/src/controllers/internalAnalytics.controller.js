@@ -97,12 +97,39 @@ exports.getOrdersMetrics = async (req, res) => {
 
 exports.getUnpaidOrdersCount = async (req, res) => {
   try {
-    const count = await Order.count({
-      where: { payment_status: 'unpaid' },
-    });
+    const { customer_id } = req.query;
+    const where = { payment_status: 'unpaid' };
+    if (customer_id) {
+      where.customer_id = customer_id;
+    }
+    const count = await Order.count({ where });
     res.status(200).json({ count });
   } catch (error) {
     console.error('Internal analytics getUnpaidOrdersCount error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Get order history for a customer (for user-service profile).
+ * GET /api/internal/analytics/orders-by-customer?customer_id=uuid&limit=50
+ */
+exports.getOrdersByCustomerId = async (req, res) => {
+  try {
+    const { customer_id, limit = 50 } = req.query;
+    if (!customer_id) {
+      return res.status(400).json({ message: 'customer_id is required' });
+    }
+    const queryLimit = Math.min(parseInt(limit, 10) || 50, 100);
+    const orders = await Order.findAll({
+      where: { customer_id },
+      order: [['created_at', 'DESC']],
+      limit: queryLimit,
+      raw: true,
+    });
+    res.status(200).json({ orders });
+  } catch (error) {
+    console.error('Internal analytics getOrdersByCustomerId error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };

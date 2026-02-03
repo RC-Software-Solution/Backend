@@ -8,9 +8,9 @@ const User = sequelize.define("User", {
     password: { type: DataTypes.STRING, allowNull: false},
     role: { type: DataTypes.ENUM("customer", "delivery_person", "admin", "super_admin")},
     address: { type: DataTypes.STRING},
-    area_id: { type: DataTypes.BIGINT, references: { model: "areas", key: "area_id"}}, //here I tell sequelize to create a foreign key reference to the areas table
+    area_id: { type: DataTypes.BIGINT, references: { model: "areas", key: "area_id"}},
     phone: { type: DataTypes.STRING},
-    created_at: { type: DataTypes.DATE}, //remeber sequelize itself create createdAt columns when doing this even you have created_at
+    created_at: { type: DataTypes.DATE},
     updated_at: { type: DataTypes.DATE},
     approved: { type: DataTypes.BOOLEAN, defaultValue: 0},
     fcm_token: { type: DataTypes.STRING},
@@ -18,11 +18,22 @@ const User = sequelize.define("User", {
     password_reset_token: { type: DataTypes.STRING},
     password_reset_expires: { type: DataTypes.DATE},
     status: { type: DataTypes.ENUM("active", "inactive", "deleted"), defaultValue: "active"},
-    deleted_at: { type: DataTypes.DATE }
+    deleted_at: { type: DataTypes.DATE },
+    // Customer status management: pending | accepted | rejected | disabled | blocked
+    customer_status: {
+        type: DataTypes.ENUM("pending", "accepted", "rejected", "disabled", "blocked"),
+        defaultValue: "pending",
+        allowNull: true,
+        comment: "For role=customer only; null for other roles",
+    },
+    rejection_reason: { type: DataTypes.TEXT, allowNull: true },
+    rejected_at: { type: DataTypes.DATE, allowNull: true },
+    blocked_at: { type: DataTypes.DATE, allowNull: true },
+    blocked_reason: { type: DataTypes.TEXT, allowNull: true },
 }, {
     tableName: "users",
     timestamps: true,
-    underscored: true //here I tell sequelize to use snake_case for column names
+    underscored: true,
 })
 
 module.exports = User;

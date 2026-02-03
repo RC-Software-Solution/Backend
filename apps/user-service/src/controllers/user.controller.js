@@ -55,6 +55,7 @@ exports.signup = async (req, res) => {
       created_at: new Date(),
       updated_at: new Date(),
       status: 'active',
+      customer_status: role === 'customer' ? 'pending' : null,
     });
 
     res.status(201).json({
