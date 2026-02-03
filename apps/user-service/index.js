@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const userRoutes = require("./src/routes/user.routes");
 const authRoutes = require("./src/routes/auth.routes");
+const internalAnalyticsRoutes = require("./src/routes/internalAnalytics.routes");
 
 const app = express();
 
@@ -19,6 +20,9 @@ app.use("/api/users", authRoutes);
 
 // User management routes (signup, profile, etc.)
 app.use("/api/users", userRoutes);
+
+// Internal analytics (service-to-service only)
+app.use("/api/internal/analytics", internalAnalyticsRoutes);
 
 
 const PORT = process.env.PORT || 4001;

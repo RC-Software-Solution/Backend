@@ -82,6 +82,7 @@ services:
       - EMAIL_USER=buddhigayanmaleesha2000@gmail.com
       - EMAIL_PASSWORD="foezuonvnzjxdbjp"
       - FRONTEND_URL=http://localhost:3000
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal-dev-key}
     ports:
       - "4001:4001"
     volumes:
@@ -108,6 +109,7 @@ services:
       - USER_SERVICE_HOST=user-service
       - USER_SERVICE_PORT=4001
       - JWT_PUBLIC_KEY_PATH=/app/secrets/public.pem
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal-dev-key}
     ports:
       - "4002:4002"
     volumes:
@@ -151,6 +153,7 @@ services:
       - USER_SERVICE_HOST=user-service
       - USER_SERVICE_PORT=4001
       - JWT_PUBLIC_KEY_PATH=/app/secrets/public.pem
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal-dev-key}
     ports:
       - "4004:4004"
     volumes:
@@ -183,6 +186,33 @@ services:
       - /app/node_modules
       - ../secrets/public.pem:/app/secrets/public.pem
 
+  analytics-service:
+    build: ../apps/analytics-service
+    container_name: analytics-service
+    command: ["npx", "nodemon", "--legacy-watch", "--watch", "/app", "index.js"]
+    depends_on:
+      - user-service
+      - order-service
+      - locations-service
+    environment:
+      - NODE_ENV=development
+      - PORT=4006
+      - USER_SERVICE_HOST=user-service
+      - USER_SERVICE_PORT=4001
+      - ORDER_SERVICE_HOST=order-service
+      - ORDER_SERVICE_PORT=4002
+      - LOCATIONS_SERVICE_HOST=locations-service
+      - LOCATIONS_SERVICE_PORT=4004
+      - MENU_SERVICE_HOST=menu-service
+      - MENU_SERVICE_PORT=4005
+      - JWT_PUBLIC_KEY_PATH=/app/secrets/public.pem
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-internal-dev-key}
+    ports:
+      - "4006:4006"
+    volumes:
+      - ../apps/analytics-service:/app
+      - /app/node_modules
+      - ../secrets/public.pem:/app/secrets/public.pem
 
 volumes:
   mysql-data:

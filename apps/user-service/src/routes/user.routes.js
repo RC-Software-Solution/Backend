@@ -8,6 +8,7 @@ router.post('/signup', signup);
 router.post('/refresh-token', refreshToken);
 router.get('/profile', authMiddleware, getProfile);
 router.get('/:userId', getUserById); // Internal service endpoint - no auth required
+
 router.put('/approve/:customerId', authMiddleware, checkRole(["admin", "super_admin"]), approveCustomer);
 router.put('/delete/:userId', authMiddleware, deleteAccount);
 
