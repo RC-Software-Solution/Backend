@@ -7,6 +7,7 @@ const userRoutes = require("./src/routes/user.routes");
 const authRoutes = require("./src/routes/auth.routes");
 const internalAnalyticsRoutes = require("./src/routes/internalAnalytics.routes");
 const customerRoutes = require("./src/routes/customer.routes");
+const internalRoutes = require("./src/routes/internal.routes");
 
 const app = express();
 
@@ -29,6 +30,8 @@ app.use("/api/users", userRoutes);
 // Internal analytics (service-to-service only)
 app.use("/api/internal/analytics", internalAnalyticsRoutes);
 
+// Internal service-to-service actions (push notify)
+app.use("/api/internal", internalRoutes);
 
 const PORT = process.env.PORT || 4001;
 app.listen(PORT, () => console.log(`User Service running on port ${PORT}`));
