@@ -6,8 +6,8 @@ const { sendToMany } = require('../services/notificationService');
 const ADMIN_ROLES = ['admin', 'super_admin'];
 
 exports.createNotice = async (req, res) => {
-  const title = req.body.title?.trim();
-  const body = req.body.body?.trim();
+  const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+  const body = typeof req.body.body === 'string' ? req.body.body.trim() : '';
   const area_id = req.body.area_id ?? null;
 
   if (!title || !body) {
@@ -15,6 +15,9 @@ exports.createNotice = async (req, res) => {
   }
   if (title.length > 150) {
     return res.status(400).json({ message: 'title must be 150 characters or less' });
+  }
+  if (area_id !== null && !Number.isInteger(area_id)) {
+    return res.status(400).json({ message: 'area_id must be an integer' });
   }
 
   try {
@@ -37,7 +40,7 @@ exports.createNotice = async (req, res) => {
 };
 
 exports.listNotices = async (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+  const limit = Math.max(Math.min(parseInt(req.query.limit, 10) || 20, 100), 1);
   const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
 
   // req.user is loaded from the DB by authMiddleware, so area_id is current.
