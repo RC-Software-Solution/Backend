@@ -16,14 +16,15 @@ app.use(cors());
 app.use(helmet());
 app.use(morgan("dev"));
 
+// Customer management (admin/super_admin only)
+// Must be mounted before userRoutes: its GET /:userId would swallow /customers
+app.use("/api/users/customers", customerRoutes);
+
 // Authentication routes (login, forgot-password, reset-password)
 app.use("/api/users", authRoutes);
 
 // User management routes (signup, profile, etc.)
 app.use("/api/users", userRoutes);
-
-// Customer management (admin/super_admin only)
-app.use("/api/users/customers", customerRoutes);
 
 // Internal analytics (service-to-service only)
 app.use("/api/internal/analytics", internalAnalyticsRoutes);
