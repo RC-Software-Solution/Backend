@@ -11,7 +11,7 @@ router.use(authMiddleware);
 router.get('/', getOrders);
 router.post('/', createOrder);
 router.put('/:order_id', editOrder);
-router.put('/:order_id/payment', updatePaymentStatus);
+router.put('/:order_id/payment', checkRole(['delivery_person', 'admin', 'super_admin']), updatePaymentStatus);
 router.put('/:order_id/status', checkRole(['delivery_person', 'admin', 'super_admin']), updateOrderStatus);
 router.delete('/:order_id', deleteOrder);
 

@@ -768,8 +768,20 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     const changes = { status };
-    if (status === 'delivery_failed') changes.failure_reason = failure_reason.trim();
-    await order.update(changes);
+    if (status === 'delivery_failed') {
+      changes.failure_reason = failure_reason.trim();
+      // A failed delivery leaves the customer owing; new orders default to
+      // payment_status 'pending', which the unpaid-order count ignores.
+      if (order.payment_status === 'pending') changes.payment_status = 'unpaid';
+    }
+
+    // Conditional update keyed on the status we just checked, to avoid a
+    // read-check-write race between two concurrent status changes.
+    const [updated] = await Order.update(changes, { where: { id: order_id, status: order.status } });
+    if (!updated) {
+      return res.status(409).json({ message: 'Order status changed concurrently, please retry' });
+    }
+    order.set(changes); // so pushMessageFor sees the new status/reason
 
     // Fire-and-forget: a push failure must not fail the status change.
     const push = pushMessageFor(order);
@@ -784,6 +796,7 @@ exports.updateOrderStatus = async (req, res) => {
       order_id,
       status,
       failure_reason: changes.failure_reason ?? null,
+      payment_status: order.payment_status,
     });
   } catch (error) {
     console.error('Error updating order status:', error);

@@ -50,6 +50,8 @@ test('delivery_failed only from delivering and needs a reason', () => {
   assert.equal(checkTransition('delivering', 'delivery_failed', 'delivery_person', '   ').code, 400);
   assert.equal(checkTransition('delivering', 'delivery_failed', 'delivery_person', 5).code, 400);
   assert.equal(checkTransition('preparing', 'delivery_failed', 'delivery_person', 'x').code, 409);
+  assert.equal(checkTransition('delivering', 'delivery_failed', 'delivery_person', 'x'.repeat(501)).code, 400);
+  assert.equal(checkTransition('delivering', 'delivery_failed', 'delivery_person', 'x'.repeat(500)), null);
 });
 
 test('push copy per status', () => {

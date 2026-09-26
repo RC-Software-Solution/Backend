@@ -24,6 +24,9 @@ function checkTransition(from, to, role, failureReason) {
   if (to === 'delivery_failed' && (typeof failureReason !== 'string' || !failureReason.trim())) {
     return { code: 400, message: 'failure_reason is required for delivery_failed' };
   }
+  if (to === 'delivery_failed' && failureReason.trim().length > 500) {
+    return { code: 400, message: 'failure_reason must be 500 characters or less' };
+  }
   return null;
 }
 

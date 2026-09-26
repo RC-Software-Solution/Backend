@@ -24,7 +24,7 @@ exports.createNotice = async (req, res) => {
     // Save first: if the push fails, the notice is still listed in the app.
     const notice = await Notice.create({ title, body, area_id, created_by: req.user.id });
 
-    const where = { role: 'customer', customer_status: 'accepted', fcm_token: { [Op.ne]: null } };
+    const where = { role: 'customer', status: 'active', customer_status: 'accepted', fcm_token: { [Op.ne]: null } };
     if (area_id) where.area_id = area_id;
     const recipients = await User.findAll({ where, attributes: ['fcm_token'] });
     const push = await sendToMany(recipients.map((u) => u.fcm_token), title, body);
