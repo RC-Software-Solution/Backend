@@ -25,7 +25,7 @@ class OrderServiceClient {
    * @returns {Promise<Object>} Response data
    */
   async makeRequest(endpoint, method = 'GET', data = null, headers = {}) {
-    if (this.authHeader) {
+    if (this.authHeader && !headers['Authorization']) {
       headers['Authorization'] = this.authHeader;
     }
     return new Promise((resolve, reject) => {
@@ -139,7 +139,7 @@ class OrderServiceClient {
    */
   async updatePaymentStatus(orderId, paymentStatus, authHeader = null) {
     try {
-      
+
       const headers = {};
       if (authHeader) {
         headers['Authorization'] = authHeader; // forward JWT
@@ -161,6 +161,23 @@ class OrderServiceClient {
       console.error('Error updating payment status:', error.message);
       throw error;
     }
+  }
+
+  /**
+   * Update delivery status of an order
+   * @param {string} orderId - Order ID
+   * @param {string} status - New order status
+   * @param {string} failureReason - Required when status is delivery_failed
+   * @param {string} authHeader - Caller's Authorization header (forwarded)
+   * @returns {Promise<Object>} Update response
+   */
+  async updateOrderStatus(orderId, status, failureReason, authHeader) {
+    return this.makeRequest(
+      `/api/orders/${orderId}/status`,
+      'PUT',
+      { status, failure_reason: failureReason },
+      { Authorization: authHeader }
+    );
   }
 }
 

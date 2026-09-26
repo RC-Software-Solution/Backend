@@ -1,8 +1,9 @@
 const express = require('express');
-const { 
-  getAreaOrders, 
-  updatePaymentStatus, 
-  getMyAreaOrders 
+const {
+  getAreaOrders,
+  updatePaymentStatus,
+  getMyAreaOrders,
+  updateOrderStatus
 } = require('../controllers/delivery.controller');
 const { authMiddleware } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
@@ -20,5 +21,8 @@ router.get('/orders/my-area', checkRole(['delivery_person', 'admin', 'super_admi
 
 // Update payment status of an order
 router.put('/orders/:order_id/payment', checkRole(['delivery_person', 'admin', 'super_admin']), updatePaymentStatus);
+
+// Update delivery status of an order (preparing / delivering / delivered / delivery_failed)
+router.put('/orders/:order_id/status', checkRole(['delivery_person', 'admin', 'super_admin']), updateOrderStatus);
 
 module.exports = router;

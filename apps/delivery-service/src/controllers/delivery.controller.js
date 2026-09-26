@@ -106,17 +106,17 @@ exports.getMyAreaOrders = async (req, res) => {
   try {
     // Get the delivery person's area from the authenticated user
     const userAreaId = req.user.area_id;
-    
+
     if (!userAreaId) {
-      return res.status(400).json({ 
-        message: 'No area assigned to your account. Please contact administrator.' 
+      return res.status(400).json({
+        message: 'No area assigned to your account. Please contact administrator.'
       });
     }
 
     orderServiceClient.setAuthHeader(req.header("Authorization"));
     // Get current meal session orders for the delivery person's area
     const orders = await orderServiceClient.getOrdersByArea(
-      userAreaId, 
+      userAreaId,
       null, // all meal times
       null, // today
       'pending' // only pending payments
@@ -131,9 +131,28 @@ exports.getMyAreaOrders = async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching my area orders:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to fetch your area orders',
-      error: error.message 
+      error: error.message
     });
+  }
+};
+
+/**
+ * Update order status (proxied to order-service, which validates and sends the push)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+exports.updateOrderStatus = async (req, res) => {
+  const { order_id } = req.params;
+  const { status, failure_reason } = req.body;
+
+  try {
+    const result = await orderServiceClient.updateOrderStatus(order_id, status, failure_reason, req.header('Authorization'));
+    res.status(200).json(result);
+  } catch (error) {
+    // makeRequest rejects with "HTTP <code>: <message>"; forward order-service's 4xx as-is
+    const code = Number(error.message.match(/^HTTP (\d{3})/)?.[1]) || 500;
+    res.status(code).json({ message: error.message });
   }
 };
