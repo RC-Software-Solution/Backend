@@ -1,5 +1,5 @@
 const express = require('express');
-const { createOrder, editOrder, deleteOrder, getOrders, updatePaymentStatus } = require('../controllers/order.controller');
+const { createOrder, editOrder, deleteOrder, getOrders, updatePaymentStatus, updateOrderStatus } = require('../controllers/order.controller');
 const { authMiddleware } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
@@ -12,6 +12,7 @@ router.get('/', getOrders);
 router.post('/', createOrder);
 router.put('/:order_id', editOrder);
 router.put('/:order_id/payment', updatePaymentStatus);
+router.put('/:order_id/status', checkRole(['delivery_person', 'admin', 'super_admin']), updateOrderStatus);
 router.delete('/:order_id', deleteOrder);
 
 

@@ -108,6 +108,19 @@ class UserServiceClient {
       throw error;
     }
   }
+
+  /**
+   * Ask user-service to push a notification to a user (internal call)
+   * @param {string} userId - User ID
+   * @param {string} title - Notification title
+   * @param {string} body - Notification body
+   * @returns {Promise<Object>} { sent: boolean }
+   */
+  async notifyUser(userId, title, body) {
+    return this.makeRequest('/api/internal/notify', 'POST', { user_id: userId, title, body }, {
+      'X-Internal-Key': process.env.INTERNAL_API_KEY,
+    });
+  }
 }
 
 module.exports = new UserServiceClient();

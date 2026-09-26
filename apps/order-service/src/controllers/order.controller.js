@@ -1,6 +1,7 @@
 const redisPublisher = require('../services/redisPublisher');
 const menuServiceClient = require('../services/menuServiceClient');
 const userServiceClient = require('../services/userServiceClient');
+const { checkTransition, pushMessageFor } = require('../utils/orderStatus');
 const { Op } = require('sequelize');
 const { DateTime } = require('luxon');
 const { Order, Order_Item, sequelize } = require('../models');
@@ -746,6 +747,46 @@ exports.updatePaymentStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating payment status:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+  const { order_id } = req.params;
+  const { status, failure_reason } = req.body;
+
+  try {
+    const order = await Order.findByPk(order_id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const rejection = checkTransition(order.status, status, req.user.role, failure_reason);
+    if (rejection) {
+      const { code, ...body } = rejection;
+      return res.status(code).json(body);
+    }
+
+    const changes = { status };
+    if (status === 'delivery_failed') changes.failure_reason = failure_reason.trim();
+    await order.update(changes);
+
+    // Fire-and-forget: a push failure must not fail the status change.
+    const push = pushMessageFor(order);
+    if (push) {
+      userServiceClient
+        .notifyUser(order.customer_id, push.title, push.body)
+        .catch((error) => console.error(`Push for order ${order_id} failed:`, error.message));
+    }
+
+    res.status(200).json({
+      message: 'Order status updated successfully',
+      order_id,
+      status,
+      failure_reason: changes.failure_reason ?? null,
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
