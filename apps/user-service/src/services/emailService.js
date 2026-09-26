@@ -49,3 +49,23 @@ exports.sendEmail = async (to, subject, text) => {
         throw error;
     }
 }
+
+/**
+ * Best-effort notification email: logs and returns false instead of throwing.
+ *
+ * Use this when the email is a courtesy and the real work has already been committed —
+ * a dead SMTP account must not turn a successful write into a 500. Mirrors
+ * sendPushNotification, which already swallows its own failures.
+ *
+ * Keep using sendEmail() where the email IS the deliverable (password reset), because
+ * there the caller must know it failed.
+ */
+exports.sendEmailQuietly = async (to, subject, text) => {
+    try {
+        await exports.sendEmail(to, subject, text);
+        return true;
+    } catch (error) {
+        console.error(`Notification email to ${to} failed (continuing):`, error.message);
+        return false;
+    }
+}

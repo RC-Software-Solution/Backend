@@ -1,0 +1,3501 @@
+{
+  "info": {
+    "name": "RC Backend — All Services",
+    "description": "Every REST endpoint across the six RC Backend services, generated from the Express route files by scripts/gen-postman.js.\n\nQuick start: import the environment file alongside this collection, select it, fill in the six credential fields, then run the _Setup folder. Every other request picks up its token automatically.\n\nRequests go straight to service ports (4001-4006). The api-gateway only proxies /users and /api/analytics, so it is not used here.\n\nSee docs/postman/README.md for the known issues this collection surfaces.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{adminToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Meal sessions and orders are date-sensitive, and the ordering window is",
+          "// checked against the current Asia/Colombo time — so dates cannot be hardcoded",
+          "// or the collection goes stale overnight.",
+          "const colombo = new Date(Date.now() + 5.5 * 3600 * 1000).toISOString();",
+          "pm.collectionVariables.set('today', colombo.slice(0, 10));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level check applied to every request.",
+          "pm.test('status is not a server error', () => pm.expect(pm.response.code).to.be.below(500));",
+          "pm.test('responded under 5s', () => pm.expect(pm.response.responseTime).to.be.below(5000));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "userApi",
+      "value": "http://localhost:4001"
+    },
+    {
+      "key": "orderApi",
+      "value": "http://localhost:4002"
+    },
+    {
+      "key": "deliveryApi",
+      "value": "http://localhost:4003"
+    },
+    {
+      "key": "locationsApi",
+      "value": "http://localhost:4004"
+    },
+    {
+      "key": "menuApi",
+      "value": "http://localhost:4005"
+    },
+    {
+      "key": "analyticsApi",
+      "value": "http://localhost:4006"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "deliveryToken",
+      "value": ""
+    },
+    {
+      "key": "customerToken",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "user_id",
+      "value": ""
+    },
+    {
+      "key": "customer_id",
+      "value": ""
+    },
+    {
+      "key": "area_id",
+      "value": ""
+    },
+    {
+      "key": "food_item_id",
+      "value": ""
+    },
+    {
+      "key": "meal_session_id",
+      "value": ""
+    },
+    {
+      "key": "meal_session_item_id",
+      "value": ""
+    },
+    {
+      "key": "order_id",
+      "value": ""
+    },
+    {
+      "key": "notice_id",
+      "value": ""
+    },
+    {
+      "key": "today",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "_Setup",
+      "description": "Run these first — they save the bearer tokens every other folder reads. Fill in the credentials in the environment file before running.",
+      "item": [
+        {
+          "name": "Login as admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin login succeeded', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "if (j.access_token) pm.collectionVariables.set('adminToken', j.access_token);",
+                  "if (j.refresh_token) pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "if (j.user?.id) pm.collectionVariables.set('admin_user_id', j.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{userApi}}/api/users/login",
+              "host": [
+                "{{userApi}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "login"
+              ]
+            },
+            "description": "Saves access_token to {{adminToken}}. Run this before the folders that need a admin token."
+          },
+          "response": []
+        },
+        {
+          "name": "Login as delivery",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('delivery login succeeded', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "if (j.access_token) pm.collectionVariables.set('deliveryToken', j.access_token);",
+                  "if (j.refresh_token) pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "if (j.user?.id) pm.collectionVariables.set('delivery_user_id', j.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{deliveryEmail}}\",\n  \"password\": \"{{deliveryPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{userApi}}/api/users/login",
+              "host": [
+                "{{userApi}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "login"
+              ]
+            },
+            "description": "Saves access_token to {{deliveryToken}}. Run this before the folders that need a delivery token."
+          },
+          "response": []
+        },
+        {
+          "name": "Login as customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('customer login succeeded', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "if (j.access_token) pm.collectionVariables.set('customerToken', j.access_token);",
+                  "if (j.refresh_token) pm.collectionVariables.set('refresh_token', j.refresh_token);",
+                  "if (j.user?.id) pm.collectionVariables.set('customer_id', j.user.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{userApi}}/api/users/login",
+              "host": [
+                "{{userApi}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "login"
+              ]
+            },
+            "description": "Saves access_token to {{customerToken}}. Run this before the folders that need a customer token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "user-service (:4001)",
+      "description": "Base URL variable: {{userApi}}",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "POST /api/users/login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/login",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "login"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Returns access_token + refresh_token. Optional `fcm_token` in the body registers the device for push. Use the _Setup folder logins instead of this one — they save tokens automatically.\n\nNo authentication middleware on this route.\n\nSource: apps/user-service/src/routes/auth.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "POST /api/users/forgot-password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/forgot-password",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "forgot-password"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{customerEmail}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Rate limited to 3 requests per 15 minutes per IP. Emails a reset token.\n\nNo authentication middleware on this route.\n\nSource: apps/user-service/src/routes/auth.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "POST /api/users/reset-password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/reset-password",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "reset-password"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"token\": \"PASTE_TOKEN_FROM_EMAIL\",\n  \"newPassword\": \"NewPassw0rd!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Consumes the token emailed by forgot-password.\n\nNo authentication middleware on this route.\n\nSource: apps/user-service/src/routes/auth.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Users",
+          "item": [
+            {
+              "name": "POST /api/users/signup",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/signup",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "signup"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"full_name\": \"Test Customer\",\n  \"email\": \"test.customer@example.com\",\n  \"password\": \"Passw0rd!\",\n  \"role\": \"customer\",\n  \"address\": \"12 Test Lane\",\n  \"phone\": \"0770000000\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "role must be one of customer | delivery_person | admin | super_admin. `address` is stored only for customers. New customers land unapproved — approve them before they can log in. Optional `fcm_token` registers the device for push.\n\nNo authentication middleware on this route.\n\nSource: apps/user-service/src/routes/user.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.user?.id ?? j?.id ?? j?.user_id;",
+                      "if (id !== undefined && id !== null) pm.collectionVariables.set('user_id', id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/users/refresh-token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/refresh-token",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "refresh-token"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Exchanges a refresh token for a new access token.\n\nNo authentication middleware on this route.\n\nSource: apps/user-service/src/routes/user.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/users/profile",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/profile",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "profile"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Profile of the token holder.\n\nSource: apps/user-service/src/routes/user.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/users/:userId",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/{{user_id}}",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "{{user_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Service-to-service lookup used by order, menu, locations and analytics to resolve a user's area_id. Requires X-Internal-Key — it was unauthenticated until 2026-09-26.\n\nInternal: requires the X-Internal-Key header.\n\nSource: apps/user-service/src/routes/user.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/users/approve/:customerId",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/approve/{{customer_id}}",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "approve",
+                    "{{customer_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Legacy approve route. The Customers folder equivalent (POST /api/users/customers/:id/approve) is the one the admin UI uses.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/user.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/users/delete/:userId",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/delete/{{user_id}}",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "delete",
+                    "{{user_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Soft delete — sets status to `deleted`. The email can be reused by signing up again.\n\nSource: apps/user-service/src/routes/user.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Customers",
+          "item": [
+            {
+              "name": "GET /api/users/customers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "pending",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "status filter accepts the User.status values (e.g. pending, active, deleted).\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.customers?.[0]?.id ?? j?.data?.[0]?.id ?? j?.[0]?.id;",
+                      "if (id !== undefined && id !== null && !pm.collectionVariables.get('customer_id')) {",
+                      "  pm.collectionVariables.set('customer_id', id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/users/customers/export",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/export",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "export"
+                  ],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "active",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1000",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "CSV export. limit defaults to 1000.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/users/customers/:id/profile",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/{{customer_id}}/profile",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "{{customer_id}}",
+                    "profile"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Full customer record including area assignment.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "POST /api/users/customers/:id/approve",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/{{customer_id}}/approve",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "{{customer_id}}",
+                    "approve"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"area_id\": {{area_id}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "area_id is optional; approving without it leaves the customer unassigned.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "POST /api/users/customers/:id/reject",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/{{customer_id}}/reject",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "{{customer_id}}",
+                    "reject"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Incomplete registration details\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "reason is optional and stored with the rejection.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/users/customers/:id/assign-area",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/{{customer_id}}/assign-area",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "{{customer_id}}",
+                    "assign-area"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"area_id\": {{area_id}}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/users/customers/:id/disable",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/{{customer_id}}/disable",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "{{customer_id}}",
+                    "disable"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "No body. Blocks the customer from logging in.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/users/customers/:id/enable",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/{{customer_id}}/enable",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "{{customer_id}}",
+                    "enable"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "No body. Reverses disable.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/users/customers/:id/unlock",
+              "request": {
+                "method": "PUT",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/customers/{{customer_id}}/unlock",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "customers",
+                    "{{customer_id}}",
+                    "unlock"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "No body. Clears a lockout from failed login attempts.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/customer.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Notices",
+          "item": [
+            {
+              "name": "GET /api/users/notices",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/notices",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "notices"
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "limit is clamped to 1..100 (default 20). Customers see notices for their own area plus global ones.\n\nSource: apps/user-service/src/routes/notice.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.notices?.[0]?.id ?? j?.data?.[0]?.id ?? j?.[0]?.id;",
+                      "if (id !== undefined && id !== null && !pm.collectionVariables.get('notice_id')) {",
+                      "  pm.collectionVariables.set('notice_id', id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/users/notices",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/users/notices",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "notices"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Kitchen closed tomorrow\",\n  \"body\": \"No dinner service on the 30th.\",\n  \"area_id\": null\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "area_id null targets every user; set it to an area id to target one area. Sends a push to the matching users.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/notice.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.notice?.id ?? j?.id;",
+                      "if (id !== undefined && id !== null) pm.collectionVariables.set('notice_id', id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "DELETE /api/users/notices/:id",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{userApi}}/api/users/notices/{{notice_id}}",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "notices",
+                    "{{notice_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/user-service/src/routes/notice.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Internal",
+          "item": [
+            {
+              "name": "POST /api/internal/notify",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/internal/notify",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "notify"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_id\": \"{{user_id}}\",\n  \"title\": \"Test push\",\n  \"body\": \"Sent via the internal notify endpoint\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Service-to-service push. Requires the X-Internal-Key header, not a bearer token.\n\nInternal: requires the X-Internal-Key header.\n\nSource: apps/user-service/src/routes/internal.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/analytics/blocked-users-count",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{userApi}}/api/internal/analytics/blocked-users-count",
+                  "host": [
+                    "{{userApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "blocked-users-count"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/user-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "order-service (:4002)",
+      "description": "Base URL variable: {{orderApi}}",
+      "item": [
+        {
+          "name": "Orders",
+          "item": [
+            {
+              "name": "GET /api/orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{orderApi}}/api/orders?type=current",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders"
+                  ],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "current",
+                      "disabled": false
+                    },
+                    {
+                      "key": "status",
+                      "value": "pending",
+                      "disabled": true
+                    },
+                    {
+                      "key": "meal_type",
+                      "value": "lunch",
+                      "disabled": true
+                    },
+                    {
+                      "key": "payment_status",
+                      "value": "pending",
+                      "disabled": true
+                    },
+                    {
+                      "key": "customer_id",
+                      "value": "{{customer_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "area_id",
+                      "value": "{{area_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date_range",
+                      "value": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "start_date",
+                      "value": "2026-09-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "end_date",
+                      "value": "2026-09-30",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "0",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "`type` is REQUIRED — one of `current`, `pending` or `completed`; anything else returns 400. A delivery_person must also pass `area_id`. status: pending | preparing | delivering | delivered | completed | cancelled | delivery_failed. payment_status: pending | paid | unpaid | ignored.\n\nSource: apps/order-service/src/routes/order.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.orders?.[0]?.id ?? j?.data?.[0]?.id ?? j?.[0]?.id;",
+                      "if (id !== undefined && id !== null && !pm.collectionVariables.get('order_id')) {",
+                      "  pm.collectionVariables.set('order_id', id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "POST /api/orders",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/orders",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"customer_id\": \"{{customer_id}}\",\n  \"items\": [\n    {\n      \"food_item_id\": {{food_item_id}},\n      \"quantity\": 2\n    }\n  ],\n  \"meal_time\": \"lunch\",\n  \"target_date\": \"{{today}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "meal_time: breakfast | lunch | dinner. target_date is the delivery date (pre-orders). Decrements menu-service inventory, so the food item must already be attached to a meal session that is open right now and still has stock. Run the menu-service folder first — see the seeding order in the README.\n\nSource: apps/order-service/src/routes/order.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.order?.id ?? j?.id ?? j?.order_id;",
+                      "if (id !== undefined && id !== null) pm.collectionVariables.set('order_id', id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /api/orders/:order_id",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/orders/{{order_id}}",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{order_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"items\": [\n    {\n      \"food_item_id\": {{food_item_id}},\n      \"quantity\": 3\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Replaces the order items. Only allowed while the order is still pending.\n\nSource: apps/order-service/src/routes/order.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/orders/:order_id/payment",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/orders/{{order_id}}/payment",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{order_id}}",
+                    "payment"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"payment_status\": \"paid\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "payment_status: pending | paid | unpaid | ignored. An order becomes `completed` when it is both delivered and paid.\n\nRoles allowed: delivery_person, admin, super_admin.\n\nSource: apps/order-service/src/routes/order.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/orders/:order_id/status",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/orders/{{order_id}}/status",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{order_id}}",
+                    "status"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"preparing\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Allowed transitions: pending→preparing|cancelled, preparing→delivering|cancelled, delivering→delivered|delivery_failed. Cancelling is admin/super_admin only. `delivery_failed` additionally requires a non-empty `failure_reason` of 500 chars or fewer. `completed` is derived, never set directly. Each transition fires a push to the customer.\n\nRoles allowed: delivery_person, admin, super_admin.\n\nSource: apps/order-service/src/routes/order.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "DELETE /api/orders/:order_id",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{orderApi}}/api/orders/{{order_id}}",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "orders",
+                    "{{order_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Source: apps/order-service/src/routes/order.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Internal",
+          "item": [
+            {
+              "name": "GET /api/internal/analytics/sales-totals",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/internal/analytics/sales-totals",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "sales-totals"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "weekly",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/order-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/analytics/orders-metrics",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/internal/analytics/orders-metrics",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "orders-metrics"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "weekly",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/order-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/analytics/unpaid-orders-count",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/internal/analytics/unpaid-orders-count",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "unpaid-orders-count"
+                  ],
+                  "query": [
+                    {
+                      "key": "customer_id",
+                      "value": "{{customer_id}}",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/order-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/analytics/orders-by-customer",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/internal/analytics/orders-by-customer?customer_id={{customer_id}}",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "orders-by-customer"
+                  ],
+                  "query": [
+                    {
+                      "key": "customer_id",
+                      "value": "{{customer_id}}",
+                      "disabled": false
+                    },
+                    {
+                      "key": "limit",
+                      "value": "50",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/order-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/analytics/top-selling-items",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/internal/analytics/top-selling-items",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "top-selling-items"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "2026-09-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-09-30",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/order-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/analytics/session-performance",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/internal/analytics/session-performance?sessionType=lunch",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "session-performance"
+                  ],
+                  "query": [
+                    {
+                      "key": "sessionType",
+                      "value": "lunch",
+                      "disabled": false
+                    },
+                    {
+                      "key": "startDate",
+                      "value": "2026-09-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-09-30",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "sessionType is REQUIRED and must be breakfast | lunch | dinner — omitting it returns 400.\n\nInternal: requires the X-Internal-Key header.\n\nSource: apps/order-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/analytics/area-metrics",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{orderApi}}/api/internal/analytics/area-metrics",
+                  "host": [
+                    "{{orderApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "analytics",
+                    "area-metrics"
+                  ],
+                  "query": [
+                    {
+                      "key": "areaId",
+                      "value": "{{area_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "startDate",
+                      "value": "2026-09-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-09-30",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/order-service/src/routes/internalAnalytics.routes.js"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "delivery-service (:4003)",
+      "description": "Base URL variable: {{deliveryApi}}",
+      "item": [
+        {
+          "name": "Delivery",
+          "item": [
+            {
+              "name": "GET /api/delivery/orders/area",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{deliveryApi}}/api/delivery/orders/area?area_id={{area_id}}",
+                  "host": [
+                    "{{deliveryApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "orders",
+                    "area"
+                  ],
+                  "query": [
+                    {
+                      "key": "area_id",
+                      "value": "{{area_id}}",
+                      "disabled": false
+                    },
+                    {
+                      "key": "meal_time",
+                      "value": "lunch",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{today}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "payment_status",
+                      "value": "pending",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "payment_status defaults to `pending` when omitted.\n\nRoles allowed: delivery_person, admin, super_admin.\n\nSource: apps/delivery-service/src/routes/delivery.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/delivery/orders/my-area",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{deliveryApi}}/api/delivery/orders/my-area",
+                  "host": [
+                    "{{deliveryApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "orders",
+                    "my-area"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Orders for the area assigned to the logged-in delivery person. No query params — the area comes from the token holder's profile.\n\nRoles allowed: delivery_person, admin, super_admin.\n\nSource: apps/delivery-service/src/routes/delivery.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/delivery/orders/:order_id/payment",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{deliveryApi}}/api/delivery/orders/{{order_id}}/payment",
+                  "host": [
+                    "{{deliveryApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "orders",
+                    "{{order_id}}",
+                    "payment"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"payment_status\": \"paid\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Proxies to order-service and returns its response body unchanged.\n\nRoles allowed: delivery_person, admin, super_admin.\n\nSource: apps/delivery-service/src/routes/delivery.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/delivery/orders/:order_id/status",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{deliveryApi}}/api/delivery/orders/{{order_id}}/status",
+                  "host": [
+                    "{{deliveryApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "delivery",
+                    "orders",
+                    "{{order_id}}",
+                    "status"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"delivering\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Proxies to order-service. Same transition rules and the same `failure_reason` requirement for `delivery_failed`.\n\nRoles allowed: delivery_person, admin, super_admin.\n\nSource: apps/delivery-service/src/routes/delivery.routes.js"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "locations-service (:4004)",
+      "description": "Base URL variable: {{locationsApi}}",
+      "item": [
+        {
+          "name": "Areas",
+          "item": [
+            {
+              "name": "POST /api/areas",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{locationsApi}}/api/areas",
+                  "host": [
+                    "{{locationsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "areas"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"area_name\": \"Hostel Block A\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/locations-service/src/routes/area.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.area_id;",
+                      "if (id !== undefined && id !== null) pm.collectionVariables.set('area_id', id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/areas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{locationsApi}}/api/areas",
+                  "host": [
+                    "{{locationsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "areas"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Readable by admin, super_admin and delivery_person. Returns a bare array of { area_id, area_name }.\n\nRoles allowed: admin, super_admin, delivery_person.\n\nSource: apps/locations-service/src/routes/area.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.[0]?.area_id;",
+                      "if (id !== undefined && id !== null && !pm.collectionVariables.get('area_id')) {",
+                      "  pm.collectionVariables.set('area_id', id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/areas/:id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{locationsApi}}/api/areas/{{area_id}}",
+                  "host": [
+                    "{{locationsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "areas",
+                    "{{area_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{deliveryToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin, delivery_person.\n\nSource: apps/locations-service/src/routes/area.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/areas/:id",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{locationsApi}}/api/areas/{{area_id}}",
+                  "host": [
+                    "{{locationsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "areas",
+                    "{{area_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"area_name\": \"Hostel Block A (renamed)\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/locations-service/src/routes/area.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "DELETE /api/areas/:id",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{locationsApi}}/api/areas/{{area_id}}",
+                  "host": [
+                    "{{locationsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "areas",
+                    "{{area_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/locations-service/src/routes/area.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Internal",
+          "item": [
+            {
+              "name": "GET /api/internal/areas",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{locationsApi}}/api/internal/areas",
+                  "host": [
+                    "{{locationsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "areas"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Unauthenticated-by-bearer area list for other services. Requires X-Internal-Key.\n\nInternal: requires the X-Internal-Key header.\n\nSource: apps/locations-service/src/routes/internal.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/internal/areas/:id",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Internal-Key",
+                    "value": "{{internalKey}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{locationsApi}}/api/internal/areas/{{area_id}}",
+                  "host": [
+                    "{{locationsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "internal",
+                    "areas",
+                    "{{area_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "noauth"
+                },
+                "description": "Internal: requires the X-Internal-Key header.\n\nSource: apps/locations-service/src/routes/internal.routes.js"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "menu-service (:4005)",
+      "description": "Base URL variable: {{menuApi}}",
+      "item": [
+        {
+          "name": "Food Items",
+          "item": [
+            {
+              "name": "POST /api/food-items",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/food-items",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "food-items"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Chicken Rice\",\n  \"description\": \"Rice with grilled chicken\",\n  \"price\": 450,\n  \"meal_type\": \"non-veg\",\n  \"image_url\": \"https://example.com/chicken-rice.jpg\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "meal_type is the DIETARY enum: veg | non-veg | other. It is NOT a meal time — meal times (breakfast/lunch/dinner) live on meal sessions.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/foodItem.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.foodItem?.id ?? j?.data?.id ?? j?.id;",
+                      "if (id !== undefined && id !== null) pm.collectionVariables.set('food_item_id', id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/food-items",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/food-items",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "food-items"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "disabled": true
+                    },
+                    {
+                      "key": "meal_type",
+                      "value": "non-veg",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "meal_type filter: veg | non-veg | other.\n\nRoles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/foodItem.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.foodItems?.[0]?.id ?? j?.data?.[0]?.id ?? j?.[0]?.id;",
+                      "if (id !== undefined && id !== null && !pm.collectionVariables.get('food_item_id')) {",
+                      "  pm.collectionVariables.set('food_item_id', id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/food-items/:id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/food-items/{{food_item_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "food-items",
+                    "{{food_item_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/foodItem.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/food-items/:id",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/food-items/{{food_item_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "food-items",
+                    "{{food_item_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Chicken Rice (large)\",\n  \"description\": \"Larger portion\",\n  \"price\": 550,\n  \"meal_type\": \"non-veg\",\n  \"image_url\": \"https://example.com/chicken-rice.jpg\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/foodItem.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "DELETE /api/food-items/:id",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/food-items/{{food_item_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "food-items",
+                    "{{food_item_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/foodItem.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Meal Sessions",
+          "item": [
+            {
+              "name": "POST /api/meal-sessions",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-sessions",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-sessions"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"date\": \"{{today}}\",\n  \"meal_time\": \"lunch\",\n  \"start_time\": \"00:00:00\",\n  \"end_time\": \"23:59:00\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Ordering is allowed only while the clock (Asia/Colombo) is inside this window — see isOrderingAllowed in order.controller.js. The window here is deliberately the whole day so ordering works whenever you run the collection; narrow it to real service hours (e.g. 11:30:00–14:00:00) when testing the rejection path.\n\nIf end_time < start_time the session is treated as crossing midnight and ordering opens the PREVIOUS day — that is how pre-orders work.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/mealSession.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.mealSession?.id ?? j?.data?.id ?? j?.id;",
+                      "if (id !== undefined && id !== null) pm.collectionVariables.set('meal_session_id', id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/meal-sessions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-sessions",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-sessions"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "disabled": true
+                    },
+                    {
+                      "key": "meal_time",
+                      "value": "lunch",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{today}}",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/mealSession.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.mealSessions?.[0]?.id ?? j?.data?.[0]?.id ?? j?.[0]?.id;",
+                      "if (id !== undefined && id !== null && !pm.collectionVariables.get('meal_session_id')) {",
+                      "  pm.collectionVariables.set('meal_session_id', id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/meal-sessions/:id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-sessions/{{meal_session_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-sessions",
+                    "{{meal_session_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/mealSession.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "PUT /api/meal-sessions/:id",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-sessions/{{meal_session_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-sessions",
+                    "{{meal_session_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"date\": \"{{today}}\",\n  \"meal_time\": \"lunch\",\n  \"start_time\": \"00:00:00\",\n  \"end_time\": \"23:00:00\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/mealSession.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "DELETE /api/meal-sessions/:id",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-sessions/{{meal_session_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-sessions",
+                    "{{meal_session_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/mealSession.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "POST /api/meal-sessions/:id/items",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-sessions/{{meal_session_id}}/items",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-sessions",
+                    "{{meal_session_id}}",
+                    "items"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"food_items\": [\n    {\n      \"food_item_id\": {{food_item_id}},\n      \"available_quantity\": 50\n    }\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Bulk-attaches food items to the session with their starting stock.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/mealSession.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Meal Session Items",
+          "item": [
+            {
+              "name": "POST /api/meal-session-items",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-session-items",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-session-items"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"meal_session_id\": {{meal_session_id}},\n  \"food_item_id\": {{food_item_id}},\n  \"available_quantity\": 50\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/mealSessionItem.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.mealSessionItem?.id ?? j?.data?.id ?? j?.id;",
+                      "if (id !== undefined && id !== null) pm.collectionVariables.set('meal_session_item_id', id);"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "GET /api/meal-session-items/by-session",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-session-items/by-session?meal_time=lunch&date={{today}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-session-items",
+                    "by-session"
+                  ],
+                  "query": [
+                    {
+                      "key": "meal_time",
+                      "value": "lunch",
+                      "disabled": false
+                    },
+                    {
+                      "key": "date",
+                      "value": "{{today}}",
+                      "disabled": false
+                    },
+                    {
+                      "key": "check_availability",
+                      "value": "true",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "BOTH meal_time and date are REQUIRED — omitting either returns 400. Resolves the session from meal_time/date rather than an id. This is the endpoint the customer app uses to render a menu.\n\nRoles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/mealSessionItem.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/meal-session-items/:meal_session_id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-session-items/{{meal_session_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-session-items",
+                    "{{meal_session_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/mealSessionItem.routes.js"
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const j = pm.response.json();",
+                      "const id = j?.items?.[0]?.id ?? j?.data?.[0]?.id ?? j?.[0]?.id;",
+                      "if (id !== undefined && id !== null && !pm.collectionVariables.get('meal_session_item_id')) {",
+                      "  pm.collectionVariables.set('meal_session_item_id', id);",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "PUT /api/meal-session-items/:id",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-session-items/{{meal_session_item_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-session-items",
+                    "{{meal_session_item_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"available_quantity\": 40\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/mealSessionItem.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "DELETE /api/meal-session-items/:id",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/api/meal-session-items/{{meal_session_item_id}}",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "meal-session-items",
+                    "{{meal_session_item_id}}"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/menu-service/src/routes/mealSessionItem.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Inventory",
+          "item": [
+            {
+              "name": "POST /api/inventory/decrement",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/inventory/decrement",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "decrement"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"meal_session_id\": {{meal_session_id}},\n  \"food_item_id\": {{food_item_id}},\n  \"quantity\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Order creation calls this internally. Broadcasts a `mealSessionItemUpdate` socket.io event on menu-service (port 4005).\n\nRoles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/inventory.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "POST /api/inventory/increment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{menuApi}}/api/inventory/increment",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "inventory",
+                    "increment"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{customerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"meal_session_id\": {{meal_session_id}},\n  \"food_item_id\": {{food_item_id}},\n  \"quantity\": 1\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Order cancellation calls this internally. Also broadcasts `mealSessionItemUpdate`.\n\nRoles allowed: admin, super_admin, customer.\n\nSource: apps/menu-service/src/routes/inventory.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /health",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{menuApi}}/health",
+                  "host": [
+                    "{{menuApi}}"
+                  ],
+                  "path": [
+                    "health"
+                  ]
+                },
+                "description": "Liveness probe. No auth."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "analytics-service (:4006)",
+      "description": "Base URL variable: {{analyticsApi}}",
+      "item": [
+        {
+          "name": "Analytics",
+          "item": [
+            {
+              "name": "GET /api/analytics/sales-totals",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/sales-totals",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "sales-totals"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "weekly",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "period defaults to `weekly`.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/analytics/orders-metrics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/orders-metrics",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "orders-metrics"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "weekly",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "period defaults to `weekly`.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/analytics/blocked-users-count",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/blocked-users-count",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "blocked-users-count"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/analytics/unpaid-orders-count",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/unpaid-orders-count",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "unpaid-orders-count"
+                  ],
+                  "query": [
+                    {
+                      "key": "customer_id",
+                      "value": "{{customer_id}}",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/analytics/top-selling-items",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/top-selling-items",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "top-selling-items"
+                  ],
+                  "query": [
+                    {
+                      "key": "startDate",
+                      "value": "2026-09-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-09-30",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "10",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/analytics/session-performance",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/session-performance?sessionType=lunch",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "session-performance"
+                  ],
+                  "query": [
+                    {
+                      "key": "sessionType",
+                      "value": "lunch",
+                      "disabled": false
+                    },
+                    {
+                      "key": "startDate",
+                      "value": "2026-09-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-09-30",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "sessionType is REQUIRED and must be breakfast | lunch | dinner — omitting it returns 400, not an unfiltered result.\n\nRoles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/analytics/area-metrics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/area-metrics",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "area-metrics"
+                  ],
+                  "query": [
+                    {
+                      "key": "areaId",
+                      "value": "{{area_id}}",
+                      "disabled": true
+                    },
+                    {
+                      "key": "startDate",
+                      "value": "2026-09-01",
+                      "disabled": true
+                    },
+                    {
+                      "key": "endDate",
+                      "value": "2026-09-30",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            },
+            {
+              "name": "GET /api/analytics/areas",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/api/analytics/areas",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "api",
+                    "analytics",
+                    "areas"
+                  ]
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "description": "Roles allowed: admin, super_admin.\n\nSource: apps/analytics-service/src/routes/analytics.routes.js"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "GET /health",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{analyticsApi}}/health",
+                  "host": [
+                    "{{analyticsApi}}"
+                  ],
+                  "path": [
+                    "health"
+                  ]
+                },
+                "description": "Liveness probe. No auth."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

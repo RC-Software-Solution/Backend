@@ -1,7 +1,7 @@
 const User = require('../models/User');
 const UserStatusLog = require('../models/UserStatusLog');
 const { sendPushNotification } = require('../services/notificationService');
-const { sendEmail } = require('../services/emailService');
+const { sendEmailQuietly } = require('../services/emailService');
 const orderServiceClient = require('../services/orderServiceClient');
 
 const VALID_STATUSES = new Set(['pending', 'accepted', 'rejected', 'disabled', 'blocked']);
@@ -101,7 +101,7 @@ exports.approveCustomer = async (req, res) => {
         'Your account has been approved. You can now log in.'
       );
     }
-    await sendEmail(
+    await sendEmailQuietly(
       customer.email,
       'Account Approved',
       `Dear ${customer.full_name},\n\nYour account has been approved. You can now log in.\n\nBest regards,\nRC Team`

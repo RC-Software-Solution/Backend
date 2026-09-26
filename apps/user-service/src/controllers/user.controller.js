@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const { sendPushNotification } = require('../services/notificationService');
-const { sendEmail } = require('../services/emailService');
+const { sendEmailQuietly } = require('../services/emailService');
 const { verifyToken } = require('../utils/jwt');
 const { hashPassword } = require('../utils/password');
 
@@ -137,7 +137,7 @@ exports.approveCustomer = async (req, res) => {
       );
     }
 
-    await sendEmail(
+    await sendEmailQuietly(
       customer.email,
       'Account Approved 🎉',
       `Dear ${customer.full_name},\n\nYour account has been approved! You can now log in to your account.\n\nBest regards,\nRC Team`

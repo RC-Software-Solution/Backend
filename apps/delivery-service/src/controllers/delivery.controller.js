@@ -89,10 +89,15 @@ exports.updatePaymentStatus = async (req, res) => {
     });
 
   } catch (error) {
+    // Forward order-service's status and body unchanged, as updateOrderStatus does.
+    // Without this a 404 "Order not found" reached the client as a 500.
+    if (error.status) {
+      return res.status(error.status).json(error.body);
+    }
     console.error('Error updating payment status:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Failed to update payment status',
-      error: error.message 
+      error: error.message
     });
   }
 };

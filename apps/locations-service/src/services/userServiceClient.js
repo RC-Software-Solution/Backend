@@ -53,7 +53,7 @@ class UserServiceClient {
 
   async getUserById(userId) {
     try {
-      const response = await this.makeRequest(`/api/users/${userId}`, 'GET');
+      const response = await this.makeRequest(`/api/users/${userId}`, 'GET', null, { 'X-Internal-Key': process.env.INTERNAL_API_KEY });
       return response;
     } catch (error) {
       console.error('Error fetching user by ID:', error.message);

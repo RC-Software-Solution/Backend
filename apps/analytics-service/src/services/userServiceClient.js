@@ -1,4 +1,4 @@
-const { request, DEFAULT_TIMEOUT_MS } = require('../utils/httpClient');
+const { request, getInternalHeaders, DEFAULT_TIMEOUT_MS } = require('../utils/httpClient');
 
 const host = process.env.USER_SERVICE_HOST || 'user-service';
 const port = process.env.USER_SERVICE_PORT || 4001;
@@ -9,6 +9,7 @@ async function getUserById(userId) {
     port,
     path: `/api/users/${userId}`,
     method: 'GET',
+    headers: getInternalHeaders(),
     timeoutMs: DEFAULT_TIMEOUT_MS,
   });
   return res;

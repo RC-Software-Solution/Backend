@@ -10,8 +10,8 @@ const {
 const { authMiddleware } = require('../middlewares/authMiddleware');
 const { checkRole } = require('../middlewares/roleMiddleware');
 
-const CAN_MANAGE = ['admin', 'super-admin'];
-const CAN_READ = ['admin', 'super-admin', 'delivery-person'];
+const CAN_MANAGE = ['admin', 'super_admin'];
+const CAN_READ = ['admin', 'super_admin', 'delivery_person'];
 
 router.post('/', authMiddleware, checkRole(CAN_MANAGE), createArea);
 router.get('/', authMiddleware, checkRole(CAN_READ), getAreas);

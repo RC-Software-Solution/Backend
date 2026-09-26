@@ -1,0 +1,17 @@
+#!/bin/sh
+# Regenerates docs/API.md and the Postman collection when a route file changes,
+# so the API reference cannot drift from the routes it documents.
+#
+# Enable once per clone:  git config core.hooksPath .githooks
+
+changed=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^apps/[^/]+/src/routes/.*\.js$|^scripts/gen-postman\.js$')
+[ -z "$changed" ] && exit 0
+
+echo "pre-commit: route files changed, regenerating API docs…"
+node scripts/gen-postman.js || {
+  echo "pre-commit: generator failed — commit aborted." >&2
+  exit 1
+}
+
+git add docs/API.md docs/postman/rc-backend.postman_collection.json docs/postman/rc-backend.postman_environment.json
+exit 0

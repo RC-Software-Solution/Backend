@@ -76,7 +76,7 @@ class UserServiceClient {
   async getUserById(userId) {
     try {
       console.log(`Attempting to fetch user ${userId} from ${this.baseUrl}/api/users/${userId}`);
-      const response = await this.makeRequest(`/api/users/${userId}`, 'GET');
+      const response = await this.makeRequest(`/api/users/${userId}`, 'GET', null, { 'X-Internal-Key': process.env.INTERNAL_API_KEY });
       console.log('Successfully fetched user data:', response);
       return response;
     } catch (error) {

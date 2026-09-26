@@ -2,6 +2,7 @@ const redisPublisher = require('../services/redisPublisher');
 const menuServiceClient = require('../services/menuServiceClient');
 const userServiceClient = require('../services/userServiceClient');
 const { checkTransition, pushMessageFor } = require('../utils/orderStatus');
+const { normalizeItems } = require('../utils/orderItems');
 const { Op } = require('sequelize');
 const { DateTime } = require('luxon');
 const { Order, Order_Item, sequelize } = require('../models');
@@ -29,8 +30,10 @@ const isOrderingAllowed = (sessionDate, startTime, endTime) => {
   return now >= sessionStart && now <= sessionEnd;
 };
 
+
 exports.createOrder = async (req, res) => {
-  const { customer_id, items, meal_time, target_date } = req.body;
+  const { customer_id, meal_time, target_date } = req.body;
+  const items = normalizeItems(req.body.items);
 
   try {
     if (
@@ -198,7 +201,7 @@ exports.createOrder = async (req, res) => {
 };
 
 exports.editOrder = async (req, res) => {
-  const { items } = req.body;
+  const items = normalizeItems(req.body.items);
   const { order_id } = req.params;
 
   try {

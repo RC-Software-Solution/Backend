@@ -2,7 +2,10 @@
   "name": "@rc-backend/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "docs:api": "node scripts/gen-postman.js",
+    "docs:api:check": "node scripts/gen-postman.js --check"
+  },
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.8.0",
