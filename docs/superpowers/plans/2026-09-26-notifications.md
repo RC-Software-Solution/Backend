@@ -19,6 +19,16 @@
 - `INTERNAL_API_KEY` and `USER_SERVICE_HOST` are already configured in `docker/docker-compose.yml`; do not add config.
 - Ports: user-service 4001, order-service 4002, delivery-service 4003.
 
+## Prerequisite
+
+The local DB may be missing `orders.target_date` (model has it; every full `Order` read fails with `Unknown column 'target_date'`). Check and apply the existing migration before Task 4:
+
+```bash
+docker exec mysql_db mysql -uroot -proot rc -e "SHOW COLUMNS FROM orders LIKE 'target_date';"
+# empty result → apply:
+docker exec -i mysql_db mysql -uroot -proot rc < apps/order-service/add_target_date_migration.sql
+```
+
 ## File Map
 
 | File | Change | Responsibility |
@@ -787,11 +797,10 @@ exports.updateOrderStatus = async (req, res) => {
 
     const changes = { status };
     if (status === 'delivery_failed') changes.failure_reason = failure_reason.trim();
-    // Static update: Order.beforeValidate regenerates `id`, so an instance save could target the wrong row.
-    await Order.update(changes, { where: { id: order_id } });
+    await order.update(changes);
 
     // Fire-and-forget: a push failure must not fail the status change.
-    const push = pushMessageFor({ ...order.get({ plain: true }), ...changes });
+    const push = pushMessageFor(order);
     if (push) {
       userServiceClient
         .notifyUser(order.customer_id, push.title, push.body)

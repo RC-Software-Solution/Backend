@@ -54,6 +54,10 @@ Meals, session times/quantities, and analytics (`analytics.controller.js`: sales
 
 - [ ] 🔁 **Two parallel customer-approval mechanisms.** `user.controller.js: approveCustomer()` still uses the legacy `User.approved` boolean only, while `customer.controller.js: approveCustomer()` uses the newer `customer_status` enum + `UserStatusLog` audit trail (and also sets `approved`). Both controllers/routes appear to still be live. Confirm which one the frontend actually calls and remove or fully migrate the other — otherwise the two flags can drift out of sync.
 
+- [ ] 🔒 **`GET /api/users/:userId` is unauthenticated.** Secrets are no longer returned (fixed 2026-09-26), but it still exposes email, phone and address to anyone with a user id. It's called by the auth middleware of order, menu, locations, analytics and delivery services. Move it behind `internalAuthMiddleware` (e.g. `/api/internal/users/:id`), update those 5 `userServiceClient`s to send `X-Internal-Key`, and add `INTERNAL_API_KEY` to menu-service and delivery-service in `docker/docker-compose.yml`.
+
+- [ ] ⚠️ **delivery-service `orderServiceClient` is a shared singleton holding the last caller's auth header.** `setAuthHeader()` stores the token on the module-level instance, so concurrent requests can be forwarded with another user's token. Pass the header per call and remove `setAuthHeader`.
+
 ---
 
 ## Already covered (for reference — no action needed)
