@@ -98,8 +98,9 @@ exports.getUserById = async (req, res) => {
       return res.status(400).json({ error: 'User ID is required' });
     }
 
+    // Unauthenticated (other services' auth middleware calls it), so never return secrets.
     const user = await User.findByPk(userId, {
-      attributes: { exclude: ['password'] },
+      attributes: { exclude: ['password', 'refresh_token', 'password_reset_token', 'password_reset_expires', 'fcm_token'] },
     });
 
     if (!user) {
