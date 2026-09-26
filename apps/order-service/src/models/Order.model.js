@@ -69,8 +69,10 @@ module.exports = (sequelize, DataTypes) => {
     });
   };
 
-  //hook to generate uuid for the id column
+  //hook to generate the id for new orders only; regenerating on update would
+  //make save() target a non-existent row (UPDATE ... WHERE id = <new id>)
   Order.beforeValidate((order) => {
+    if (!order.isNewRecord) return;
     const uniquePart = Date.now().toString();
     const rand = Math.random().toString(36).slice(2, 8);
     order.id = `ORD-${uniquePart}-${rand}`;
