@@ -56,10 +56,13 @@ class OrderServiceClient {
               resolve(parsedData);
             } else {
               reject(
-                new Error(
-                  `HTTP ${res.statusCode}: ${
-                    parsedData.message || parsedData.error || 'Request failed'
-                  }`
+                Object.assign(
+                  new Error(
+                    `HTTP ${res.statusCode}: ${
+                      parsedData.message || parsedData.error || 'Request failed'
+                    }`
+                  ),
+                  { status: res.statusCode, body: parsedData }
                 )
               );
             }

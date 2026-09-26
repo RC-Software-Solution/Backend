@@ -151,8 +151,11 @@ exports.updateOrderStatus = async (req, res) => {
     const result = await orderServiceClient.updateOrderStatus(order_id, status, failure_reason, req.header('Authorization'));
     res.status(200).json(result);
   } catch (error) {
-    // makeRequest rejects with "HTTP <code>: <message>"; forward order-service's 4xx as-is
-    const code = Number(error.message.match(/^HTTP (\d{3})/)?.[1]) || 500;
-    res.status(code).json({ message: error.message });
+    // Forward order-service's status and body unchanged (e.g. 409 { message, from, to, allowed })
+    if (error.status) {
+      return res.status(error.status).json(error.body);
+    }
+    console.error('Error updating order status:', error);
+    res.status(500).json({ message: 'Failed to update order status', error: error.message });
   }
 };
