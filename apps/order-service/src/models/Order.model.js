@@ -20,10 +20,16 @@ module.exports = (sequelize, DataTypes) => {
           'delivering',
           'delivered',
           'completed',
-          'cancelled'
+          'cancelled',
+          'delivery_failed'
         ),
         defaultValue: 'pending',
         allowNull: false,
+      },
+      failure_reason: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        comment: 'Set when status is delivery_failed',
       },
       meal_time: {
         type: DataTypes.ENUM('breakfast', 'lunch', 'dinner'),
