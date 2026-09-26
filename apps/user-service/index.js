@@ -7,6 +7,7 @@ const userRoutes = require("./src/routes/user.routes");
 const authRoutes = require("./src/routes/auth.routes");
 const internalAnalyticsRoutes = require("./src/routes/internalAnalytics.routes");
 const customerRoutes = require("./src/routes/customer.routes");
+const noticeRoutes = require("./src/routes/notice.routes");
 const internalRoutes = require("./src/routes/internal.routes");
 
 const app = express();
@@ -20,6 +21,9 @@ app.use(morgan("dev"));
 // Customer management (admin/super_admin only)
 // Must be mounted before userRoutes: its GET /:userId would swallow /customers
 app.use("/api/users/customers", customerRoutes);
+
+// Notices — must be mounted before userRoutes (its GET /:userId would swallow /notices)
+app.use("/api/users/notices", noticeRoutes);
 
 // Authentication routes (login, forgot-password, reset-password)
 app.use("/api/users", authRoutes);
