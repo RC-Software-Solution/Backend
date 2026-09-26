@@ -48,6 +48,8 @@ Model: `apps/user-service/src/models/Notice.js`.
 | GET | `/` | any authenticated | Customer: `area_id IS NULL OR area_id = <customer's users.area_id>` (read from DB by `req.user.id`, not the JWT — the token may be stale after an area change). Admin/super_admin: all. Newest first. `?limit` (default 20, max 100), `?offset`. |
 | DELETE | `/:id` | admin/super_admin | Hard delete. `404` if missing. |
 
+Mount **before** `userRoutes` in `index.js`: `user.routes.js` has an unauthenticated `GET /:userId` that would otherwise swallow `GET /api/users/notices`.
+
 Not included: edit, scheduling, per-user read tracking.
 
 ### `notificationService.js` changes
@@ -80,7 +82,7 @@ Not included: edit, scheduling, per-user read tracking.
 
 ### Push trigger
 
-After a successful save, order-service calls `notifyUser(order.customer_id, title, body)` — new `src/services/userServiceClient.js` — **not awaited**; errors are logged only.
+After a successful save, order-service calls `userServiceClient.notifyUser(order.customer_id, title, body)` — new method on the existing `src/services/userServiceClient.js` — **not awaited**; errors are logged only.
 
 | status | title | body |
 |---|---|---|
@@ -92,14 +94,12 @@ After a successful save, order-service calls `notifyUser(order.customer_id, titl
 
 ### Internal notify endpoint (user-service)
 
-- New router mounted at `/api/internal` behind the existing `internalAuthMiddleware`: `POST /notify { user_id, title, body }`.
-- Looks up user; `404` if missing; `204` if no `fcm_token`; otherwise `sendPushNotification` → `204`.
+- New router mounted at `/api/internal` (after the existing `/api/internal/analytics` mount) behind the existing `internalAuthMiddleware`: `POST /notify { user_id, title, body }`.
+- Looks up user; `404` if missing; otherwise `200 { sent: boolean }` (`false` when no `fcm_token` or push failed). Not 204: order-service's `userServiceClient.makeRequest` JSON-parses every body and treats an empty one as an error.
 
 ### Config
 
-- user-service: `INTERNAL_API_KEY` (must match order-service).
-- order-service: `USER_SERVICE_URL`, `INTERNAL_API_KEY`.
-- Add both to docker env files / compose.
+- Already present in `docker/docker-compose.yml`: `INTERNAL_API_KEY` for user-service and order-service, `USER_SERVICE_HOST` for order-service. No config changes needed.
 
 ## Error handling
 
